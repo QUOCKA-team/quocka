@@ -65,6 +65,8 @@ def main(args,cfg):
 		targetnames = []
 		for i,source in enumerate(slist):
 			frqid = source[-4:]
+			if frqid is not frqb:
+				continue
 			if prical in source: 
 				pricalname = source
 			elif seccal in source:
