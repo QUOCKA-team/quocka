@@ -42,7 +42,10 @@ def main(args,cfg):
 
 	if not os.path.exists(outdir+'/dat.uv') or rawclobber:
 		logprint('Running ATLOD...',logf)
-		call(['atlod', 'in=%s'%uvlist, 'out=%s/dat.uv'%outdir, 'ifsel=%s'%if_use, 'options=birdie,noauto,xycorr,rfiflag'],stdout=logf,stderr=logf)
+		if if_use > 0:
+			call(['atlod', 'in=%s'%uvlist, 'out=%s/dat.uv'%outdir, 'ifsel=%s'%if_use, 'options=birdie,noauto,xycorr,rfiflag'],stdout=logf,stderr=logf)
+		else:
+			call(['atlod', 'in=%s'%uvlist, 'out=%s/dat.uv'%outdir, 'options=birdie,noauto,xycorr,rfiflag'],stdout=logf,stderr=logf)
 	else:
 		logprint('Skipping atlod step',logf)
 	os.chdir(outdir)
@@ -65,7 +68,7 @@ def main(args,cfg):
 		targetnames = []
 		for i,source in enumerate(slist):
 			frqid = source[-4:]
-			if frqid is not frqb:
+			if frqid not in frqb:
 				continue
 			if prical in source: 
 				pricalname = source
