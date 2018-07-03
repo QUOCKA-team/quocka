@@ -1,0 +1,14 @@
+# List of setup correlator files
+# (actually, this is a list of correlator files that should be ignored)
+# There must be one and only one filename per line
+2018-05-30_0729.C3244
+2018-05-31_0730.C3244
+2018-06-01_0731.C3244
+2018-06-02_0730.C3244
+2018-06-03_0731.C3244
+2018-06-04_0732.C3244
+2018-06-06_0730.C3244
+2018-06-07_0729.C3244
+2018-06-08_0730.C3244
+2018-06-09_0731.C3244
+2018-06-10_0731.C3244
