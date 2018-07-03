@@ -33,6 +33,8 @@ def main(args,cfg):
 		logprint('Creating directory %s'%outdir,logf)
 		os.makedirs(outdir)
 	for line in open(args.setup_file):
+		if line[0] == '#':
+			continue
 		sline = line.split()
 		for a in atfiles:
 			if sline[0] in a:
@@ -111,6 +113,7 @@ def main(args,cfg):
 		call(['pgflag','vis=%s'%pricalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
 		call([ 'gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=16', 'options=xyvary','select=elevation(40,90)'],stdout=logf,stderr=logf)
 		logprint('Transferring to secondary...',logf)
+		#### MISSING HERE: GPBOOT
 		call(['gpcopy','vis=%s'%pricalname,'out=%s'%seccalname],stdout=logf,stderr=logf)
 		call(['puthd','in=%s/interval'%seccalname,'value=100000'],stdout=logf,stderr=logf)
 		call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
