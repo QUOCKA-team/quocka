@@ -28,6 +28,8 @@ def main(args,cfg):
 	prical = cfg.get('observation','primary')
 	seccal = cfg.get('observation','secondary')
 	polcal = cfg.get('observation','polcal')
+	seccal_ext = cfg.get('observation','sec_ext')
+	target_ext = cfg.get('observation','ext')
 
 	if not os.path.exists(outdir):
 		logprint('Creating directory %s'%outdir,logf)
@@ -66,8 +68,10 @@ def main(args,cfg):
 		logprint('\n\n##########\nWorking on frequency: %s\n##########\n\n'%(frqb),logf)
 		pricalname = '__NOT_FOUND__'
 		seccalname = '__NOT_FOUND__'
+		ext_seccalname = '__NOT_FOUND__'
 		polcalnames = []
 		targetnames = []
+		ext_targetnames = []
 		for i,source in enumerate(slist):
 			frqid = source[-4:]
 			if frqid not in frqb:
@@ -76,8 +80,12 @@ def main(args,cfg):
 				pricalname = source
 			elif seccal in source:
 				seccalname = source
+			elif seccal_ext in source:
+				ext_seccalname = source
 			elif any([pc in source for pc in polcal.split(',')]):
 				polcalnames.append(source)
+			elif any([es in source for es in target_ext.split(',')]):
+				ext_targetnames.append(source)
 			else:
 				targetnames.append(source)
 			logprint('\nFLAGGING: %d / %d = %s'%(i+1,len(slist),source),logf)
@@ -101,10 +109,16 @@ def main(args,cfg):
 			logprint('Error: secondary cal (%s) not found'%seccal,logf)
 			logf.close()
 			exit(1)
+		if ext_seccalname == '__NOT_FOUND__':
+			logprint('Error: extended-source secondary cal (%s) not found'%seccal_ext,logf)
+			logf.close()
+			exit(1)
 		logprint('Identified primary cal: %s'%pricalname,logf)
 		logprint('Identified secondary cal: %s'%seccalname,logf)
 		logprint('Identified %d polarization calibrators'%len(polcalnames),logf)
-		logprint('Identified %d targets to calibrate'%len(targetnames),logf)
+		logprint('Identified %d compact targets to calibrate'%len(targetnames),logf)
+		logprint('Identified secondary cal for extended sources: %s'%ext_seccalname,logf)
+		logprint('Identified %d extended targets to calibrate'%len(ext_targetnames),logf)
 		logprint('Calibration of primary cal (%s) proceeding ...'%prical,logf)
 		call(['mfcal','vis=%s'%pricalname,'interval=10000','select=elevation(40,90)'],stdout=logf,stderr=logf)
 		call(['pgflag','vis=%s'%pricalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
@@ -112,14 +126,28 @@ def main(args,cfg):
 		call([ 'gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=16', 'options=xyvary','select=elevation(40,90)'],stdout=logf,stderr=logf)
 		call(['pgflag','vis=%s'%pricalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
 		call([ 'gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=16', 'options=xyvary','select=elevation(40,90)'],stdout=logf,stderr=logf)
-		logprint('Transferring to secondary...',logf)
-		#### MISSING HERE: GPBOOT
+		logprint('Transferring to compact-source secondary...',logf)
 		call(['gpcopy','vis=%s'%pricalname,'out=%s'%seccalname],stdout=logf,stderr=logf)
 		call(['puthd','in=%s/interval'%seccalname,'value=100000'],stdout=logf,stderr=logf)
 		call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
 		call(['gpcal','in=%s'%seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
 		call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
 		call(['gpcal','in=%s'%seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
+		call(['gpboot','vis=%s'%seccalname,'cal=%s'%pricalname],stdout=logf,stderr=logf)
+		logprint('Transferring to extended-source secondary...',logf)
+		call(['gpcopy','vis=%s'%pricalname,'out=%s'%ext_seccalname],stdout=logf,stderr=logf)
+		call(['puthd','in=%s/interval'%ext_seccalname,'value=100000'],stdout=logf,stderr=logf)
+		call(['pgflag','vis=%s'%ext_seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+		call(['gpcal','in=%s'%ext_seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
+		call(['pgflag','vis=%s'%ext_seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+		call(['gpcal','in=%s'%ext_seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
+		call(['gpboot','vis=%s'%ext_seccalname,'cal=%s'%pricalname],stdout=logf,stderr=logf)
+		logprint('\n\n##########\nApplying calibration to extended sources...\n##########\n\n',logf)
+		for t in ext_targetnames:
+			logprint('Working on source %s'%t,logf)
+			call(['gpcopy','vis=%s'%ext_seccalname,'out=%s'%t],stdout=logf,stderr=logf)
+			call(['pgflag','vis=%s'%t,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+		logprint('\n\n##########\nApplying calibration to compact sources...\n##########\n\n',logf)
 		for t in targetnames:
 			logprint('Working on source %s'%t,logf)
 			slogname = '%s.log.txt'%t
