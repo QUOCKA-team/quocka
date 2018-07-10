@@ -25,6 +25,7 @@ def main(args,cfg):
 	outdir = cfg.get('output','dir')
 	rawclobber = cfg.getboolean('output','rawclobber')
 	outclobber = cfg.getboolean('output','clobber')
+	skipcal = cfg.getboolean('output','skipcal')
 	prical = cfg.get('observation','primary')
 	seccal = cfg.get('observation','secondary')
 	polcal = cfg.get('observation','polcal')
@@ -59,10 +60,12 @@ def main(args,cfg):
 		call(['uvsplit','vis=dat.uv','options=mosaic,clobber'],stdout=logf,stderr=logf)
 	else:
 		call(['uvsplit','vis=dat.uv','options=mosaic'],stdout=logf,stderr=logf)
-	slist = sorted(glob.glob('[012]*'))
+	slist = sorted(glob.glob('[012]*.[257]???'))
 	logprint('Working on %d sources'%len(slist),logf)
 	bandfreq = unique([x[-4:] for x in slist])
 	logprint('Frequency bands to process: %s'%(','.join(bandfreq)),logf)
+
+	src_to_plot = []
 
 	for frqb in bandfreq:
 		logprint('\n\n##########\nWorking on frequency: %s\n##########\n\n'%(frqb),logf)
@@ -88,19 +91,7 @@ def main(args,cfg):
 				ext_targetnames.append(source)
 			else:
 				targetnames.append(source)
-			logprint('\nFLAGGING: %d / %d = %s'%(i+1,len(slist),source),logf)
-			####
-			# This part may be largely obsolete with options=rfiflag in ATLOD
-			for line in open('../badchans_%s.txt'%frqid):
-				sline=line.split()
-				lc,uc=sline[0].split('-')
-				dc = int(uc)-int(lc)+1
-				call(['uvflag','vis=%s'%source,'line=chan,%d,%s'%(dc,lc),'flagval=flag'],stdout=logf,stderr=logf)
-			####
-			#call(['pgflag','vis=%s'%source,'stokes=xx,yy,yx,xy','flagpar=20,10,10,3,5,3,20','command=<be','options=nodisp'])
-			call(['uvflag','vis=%s'%source,'select=amplitude(2),polarization(xy,yx)','flagval=flag'],stdout=logf,stderr=logf)
-			call(['uvpflag','vis=%s'%source,'polt=xy,yx','pols=xx,xy,yx,yy','options=or'],stdout=logf,stderr=logf)
-			call(['pgflag','vis=%s'%source,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+				src_to_plot.append(source[:-5])
 		if pricalname == '__NOT_FOUND__':
 			logprint('Error: primary cal (%s) not found'%prical,logf)
 			logf.close()
@@ -119,6 +110,24 @@ def main(args,cfg):
 		logprint('Identified %d compact targets to calibrate'%len(targetnames),logf)
 		logprint('Identified secondary cal for extended sources: %s'%ext_seccalname,logf)
 		logprint('Identified %d extended targets to calibrate'%len(ext_targetnames),logf)
+		if skipcal:
+			logprint('Skipping flagging and calibration steps on user request.',logf)
+			continue
+		logprint('Initial flagging round proceeding...',logf)
+		for i,source in enumerate(slist):
+			logprint('\nFLAGGING: %d / %d = %s'%(i+1,len(slist),source),logf)
+			####
+			# This part may be largely obsolete with options=rfiflag in ATLOD
+			for line in open('../badchans_%s.txt'%frqid):
+				sline=line.split()
+				lc,uc=sline[0].split('-')
+				dc = int(uc)-int(lc)+1
+				call(['uvflag','vis=%s'%source,'line=chan,%d,%s'%(dc,lc),'flagval=flag'],stdout=logf,stderr=logf)
+			####
+			#call(['pgflag','vis=%s'%source,'stokes=xx,yy,yx,xy','flagpar=20,10,10,3,5,3,20','command=<be','options=nodisp'])
+			call(['uvflag','vis=%s'%source,'select=amplitude(2),polarization(xy,yx)','flagval=flag'],stdout=logf,stderr=logf)
+			call(['uvpflag','vis=%s'%source,'polt=xy,yx','pols=xx,xy,yx,yy','options=or'],stdout=logf,stderr=logf)
+			call(['pgflag','vis=%s'%source,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
 		logprint('Calibration of primary cal (%s) proceeding ...'%prical,logf)
 		call(['mfcal','vis=%s'%pricalname,'interval=10000','select=elevation(40,90)'],stdout=logf,stderr=logf)
 		call(['pgflag','vis=%s'%pricalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
@@ -155,12 +164,19 @@ def main(args,cfg):
 			call(['gpcopy','vis=%s'%seccalname,'out=%s'%t],stdout=logf,stderr=logf)
 			call(['pgflag','vis=%s'%t,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
 			logprint('Writing source flag and pol info to %s'%slogname,logf)
-			call(['uvspec','vis=%s'%t,'axis=rm','options=nobase,avall','nxy=1,2','interval=100000','xrange=-1500,1500','device=junk.eps/vcps'],stdout=slogf,stderr=slogf)
-			call(['epstool','--copy','--bbox','junk.eps','%s.eps'%t],stdout=logf,stderr=logf)
-			os.remove('junk.eps')
 			call(['uvfstats','vis=%s'%t],stdout=slogf,stderr=slogf)
 			call(['uvfstats','vis=%s'%t,'mode=channel'],stdout=slogf,stderr=slogf)
 			slogf.close()
+	for t in sorted(unique(src_to_plot)):
+		logprint('Plotting RMSF for %s'%t,logf)
+		if int(bandfreq[0]) < 3500:
+			call(['uvspec','vis=%s.????'%t,'axis=rm','options=nobase,avall','nxy=1,2','interval=100000','xrange=-1500,1500','device=junk.eps/vcps'],stdout=logf,stderr=logf)
+		else:
+			# For CX, the IFs have to be catenated before RM Synthesis
+			call(['uvcat','vis=%s.????'%t,'out=%s.cx'%t],stdout=logf,stderr=logf)
+			call(['uvspec','vis=%s.cx'%t,'axis=rm','options=nobase,avall','nxy=1,2','interval=100000','xrange=-3500,3500','device=junk.eps/vcps'],stdout=logf,stderr=logf)
+		call(['epstool','--copy','--bbox','junk.eps','%s.eps'%t],stdout=logf,stderr=logf)
+		os.remove('junk.eps')
 	
 	logprint('DONE!',logf)
 	logf.close()
