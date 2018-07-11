@@ -107,7 +107,7 @@ def main(args,cfg):
 		elif seccal_ext == 'NONE':
 			ext_seccalname = '(NONE)'
 		logprint('Identified primary cal: %s'%pricalname,logf)
-		logprint('Identified secondary cal: %s'%seccalname,logf)
+		logprint('Identified %d secondary cals'%len(seccalnames),logf)
 		logprint('Identified %d polarization calibrators'%len(polcalnames),logf)
 		logprint('Identified %d compact targets to calibrate'%len(targetnames),logf)
 		logprint('Identified secondary cal for extended sources: %s'%ext_seccalname,logf)
@@ -137,14 +137,23 @@ def main(args,cfg):
 		call([ 'gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=16', 'options=xyvary','select=elevation(40,90)'],stdout=logf,stderr=logf)
 		call(['pgflag','vis=%s'%pricalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
 		call([ 'gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=16', 'options=xyvary','select=elevation(40,90)'],stdout=logf,stderr=logf)
-		logprint('Transferring to compact-source secondary...',logf)
-		call(['gpcopy','vis=%s'%pricalname,'out=%s'%seccalname],stdout=logf,stderr=logf)
-		call(['puthd','in=%s/interval'%seccalname,'value=100000'],stdout=logf,stderr=logf)
-		call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
-		call(['gpcal','in=%s'%seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
-		call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
-		call(['gpcal','in=%s'%seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
-		call(['gpboot','vis=%s'%seccalname,'cal=%s'%pricalname],stdout=logf,stderr=logf)
+		for seccalname in seccalnames:
+			logprint('Transferring to compact-source secondary %s...'%seccalname,logf)
+			call(['gpcopy','vis=%s'%pricalname,'out=%s'%seccalname],stdout=logf,stderr=logf)
+			call(['puthd','in=%s/interval'%seccalname,'value=100000'],stdout=logf,stderr=logf)
+			call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+			call(['gpcal','in=%s'%seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
+			call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+			call(['gpcal','in=%s'%seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
+			call(['gpboot','vis=%s'%seccalname,'cal=%s'%pricalname],stdout=logf,stderr=logf)
+		if len(seccalnames) == 2:
+			call(['gpcopy','vis=%s'%seccalnames[0],'out=%s'%seccalnames[1],'mode=merge'],stdout=logf,stderr=logf)
+			seccalname = seccalnames[1]
+		elif len(seccalnames) == 1:
+			seccalname = seccalnames[0]
+		else:
+			logprint('Error: too many secondaries, fix me!!',logf)
+			exit(1)
 		if seccal_ext != 'NONE':
 			logprint('Transferring to extended-source secondary...',logf)
 			call(['gpcopy','vis=%s'%pricalname,'out=%s'%ext_seccalname],stdout=logf,stderr=logf)
