@@ -117,6 +117,9 @@ def main(args,cfg):
 			continue
 		logprint('Initial flagging round proceeding...',logf)
 		for i,source in enumerate(slist):
+			# only flag data corresponding to the data that we're dealing with (resolves issue #4)
+			if frqb not in source:
+				continue
 			logprint('\nFLAGGING: %d / %d = %s'%(i+1,len(slist),source),logf)
 			####
 			# This part may be largely obsolete with options=rfiflag in ATLOD
