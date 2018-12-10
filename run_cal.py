@@ -60,7 +60,7 @@ def main(args,cfg):
 		call(['uvsplit','vis=dat.uv','options=mosaic,clobber'],stdout=logf,stderr=logf)
 	else:
 		call(['uvsplit','vis=dat.uv','options=mosaic'],stdout=logf,stderr=logf)
-	slist = sorted(glob.glob('[012]*.[257]???'))
+	slist = sorted(glob.glob('[j012]*.[257]???'))
 	logprint('Working on %d sources'%len(slist),logf)
 	bandfreq = unique([x[-4:] for x in slist])
 	logprint('Frequency bands to process: %s'%(','.join(bandfreq)),logf)
