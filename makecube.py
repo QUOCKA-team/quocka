@@ -79,10 +79,15 @@ def getdata(datadir, sortlist):
         datacube.append(data)
     datacube = np.array(datacube)
     FWHM_list = np.array(FWHM_list)
-    grid =
-    M =
-    hpbw_r =
-    return np.max(FWHM_list), datacube
+    hpbw_r = np.max(FWHM_list)
+    loc = np.argmax(FWHM_list)
+    bigfile = datadir + sortlist[loc]
+    bighdu = fits.open(bigfile)[0]
+    bighead = bighdu.header
+    grid = abs(bighead['CDELT1'])
+    M = bighead['NAXIS3']
+    freq_r = bighead['CRVAL3']
+    return datacube, grid, M, hpbw_r, freq_r
 
 def smcube(data, grid, M, hpbw_r, freq_r, hpbw_n):
     '''
@@ -103,7 +108,7 @@ def smcube(data, grid, M, hpbw_r, freq_r, hpbw_n):
         hpbw = np.sqrt(hpbw_n * hpbw_n - hpbw_o * hpbw_o) / 60.
         g = Gaussian2DKernel(hpbw / (2. * np.sqrt(2. * np.log(2.))) / grid)
         data[i] = convolve(data[i], g, boundary='extend')
-        return data
+    return data
 
 
 
@@ -132,8 +137,9 @@ if __name__ == "__main__":
     print datadir
     sortlow_q, sortmid_q, sorthih_q, sortlow_u, sortmid_u, sorthih_u = readfiles(datadir)
 
-    datacube, fwhm = getdata(datadir, sortlow_u)
+    datacube, grid, M, hpbw_r, freq_r = getdata(datadir, sortlow_q)
 
+    smoothcube = smcube(datacube, grid, M, hpbw_r, freq_r, np.round(hpbw_r, decimals=3))
 
 
 
