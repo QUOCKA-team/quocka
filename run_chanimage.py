@@ -58,8 +58,8 @@ for vis in vislist:
     call(['rm','-rf','%s.restor.%s.mfs'%(sourcename,freqband)])
     call(['rm','-rf','%s.restor.%s.mfs.fits'%(sourcename,freqband)])
 
-    #for i in range(1,2049,10):
-    for i in range(1,128,10):
+    for i in range(1,2049,10):
+    #for i in range(1,128,10):
 	call(['invert','vis=%s.%s'%(sourcename,freqband),
 		'map=%s.d.%s.%04d.i'%(sourcename,freqband,i)+',%s.d.%s.%04d.q'%(sourcename,freqband,i)+ ',%s.d.%s.%04d.u'%(sourcename,freqband,i),
 		'beam=%s.beam.%s.%04d'%(sourcename,freqband,i),
