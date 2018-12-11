@@ -73,11 +73,13 @@ def getfreq(datadir, datalist):
         hdulist.close()
         freq = head['CRVAL3']
         freqlist.append(freq)
+
     freqlist = np.array(freqlist)
     sortlisti = np.array([temp for _,temp in sorted(zip(freqlist, ilist))])
     sortlistq = np.array([temp for _,temp in sorted(zip(freqlist, qlist))])
     sortlistu = np.array([temp for _,temp in sorted(zip(freqlist, ulist))])
     freqlist = np.array(sorted(freqlist))
+    print freqlist
     return freqlist, [sortlisti, sortlistq, sortlistu]
 
 def getbigframe(datadir, sortlist):
@@ -136,6 +138,7 @@ def smoothloop(args):
     hdulist.close()
     grid = abs(head['CDELT1'])
     freq = head['CRVAL3'] #+ (i + 1 - head['CRPIX3']) * head['CDELT3']
+    print freq
     hpbw_o = hpbw_r * (freq_r) / freq
     if hpbw_n <= hpbw_o:
         print 'continue'
@@ -144,7 +147,7 @@ def smoothloop(args):
         hpbw = np.sqrt(hpbw_n**2 - hpbw_o**2) / 60.
         g = Gaussian2DKernel(hpbw / (2. * np.sqrt(2. * np.log(2.))) / grid)
         data = convolve(data, g, boundary='extend')
-        return data
+        return [data, freq]
 
 def smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist):
     '''
@@ -152,27 +155,53 @@ def smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist):
     hpbw_r -- reference FWHM (arcmin)?
     freq_r -- reference frequency
     hpbw_n -- new common FWHM (arcmin)?
-    TO-DO: What are units of BMAJ?
+    TO-DO: Write freq file
     '''
     print 'Smoothing data to HPBW of %f' % hpbw_n + 'arcmin'
     print 'Entering loop'
     tic = timeit.default_timer()
-    datacube = pool.map(smoothloop, \
+    output = pool.map(smoothloop, \
         ([hpbw_r, freq_r, hpbw_n, datadir, sortlist, i] for i in range(len(sortlist))))
     print 'Loop done'
     toc = timeit.default_timer()
     print 'Time taken = %f' % (toc - tic)
     #print len(datacube)
-    datacube = [x for x in datacube if x is not None]
+    output = [x for x in output if x is not None]
+    #print 'BEEP BOOP'
+    datacube = []
+    freqs = []
+    for i in range(len(output)):
+        datacube.append(output[i][0])
+        freqs.append(output[i][1])
+    #datacube = [x for x in datacube if x is not None]
+    #freqs = [x for x in freqs if x is not None]
+    freqs = np.array(freqs)
     datacube = np.array(datacube)
-    return datacube
+    return datacube, freqs
 
-def writetofits(datadir, smoothcube, source, stoke):
+def writetodisk(datadir, smoothcube, source, stoke, sortlist, hpbw_n, freqs):
     '''
     Write data to FITS file.
     TO-DO: Proper headers, proper filenames
     '''
-    print 'Written to ' + datadir+source+'.'+stoke+'.smooth.fits'
+    headfile = sortlist[0][0]
+    hdulist = fits.open(datadir+headfile)
+    hdu = hdulist[0]
+    head = hdu.header
+    hdulist.close()
+    targ_head = head.copy()
+    del targ_head[0:8]
+    bad_cards = ['CRPIX4', 'CDELT4', 'CRVAL4', 'CTYPE4', 'RMS',\
+         'CRPIX3', 'CDELT3', 'CRVAL3']
+    for card in bad_cards:
+        del targ_head[card]
+    new_cards = ['BMAJ', 'BMIN', 'BPA']
+    new_vals = [hpbw_n, hpbw_n, 0.]
+    for i in range(len(new_cards)):
+        targ_head[new_cards[i]] = new_vals[i]
+    print 'Written frequencies to ' + datadir+source+'.'+stoke+'.frequencies.txt'
+    np.savetxt(datadir+source+'.'+stoke+'.frequencies.txt', freqs, fmt='%f')
+    print 'Written FITS to ' + datadir+source+'.'+stoke+'.smooth.fits'
     fits.writeto(datadir+source+'.'+stoke+'.smooth.fits', smoothcube)
 
 
@@ -226,9 +255,9 @@ if __name__ == "__main__":
         if i==2:
             stoke = 'u'
         print 'Stokes ' + stoke
-        smoothcube = smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist[i])
+        smoothcube, freqs = smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist[i])
         'Writing to disk...'
-        writetofits(datadir, smoothcube, source, stoke)
+        writetodisk(datadir, smoothcube, source, stoke, sortlist, hpbw_n, freqs)
     pool.close()
     print 'Done!'
 
