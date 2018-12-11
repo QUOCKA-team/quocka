@@ -96,7 +96,7 @@ def getbigframe(datadir, sortlist):
         FWHM_list.append(FWHM)
         hdulist.close()
     FWHM_list = np.array(FWHM_list)
-    hpbw_r = np.max(FWHM_list)
+    hpbw_r = np.max(FWHM_list)*60 # In arcmin now
     hpbw_n = np.round(hpbw_r, decimals=3)
     loc = np.argmax(FWHM_list)
     bigfile = datadir + sortlist[loc]
@@ -124,11 +124,12 @@ def smoothloop(args):
     hpbw_o = hpbw_r * (freq_r) / freq
     if hpbw_n <= hpbw_o:
         print 'continue'
+        pass
     else:
-        hpbw = np.sqrt(hpbw_n**2 - hpbw_o**2) #/ 60.
+        hpbw = np.sqrt(hpbw_n**2 - hpbw_o**2) / 60.
         g = Gaussian2DKernel(hpbw / (2. * np.sqrt(2. * np.log(2.))) / grid)
         data = convolve(data, g, boundary='extend')
-    return data
+        return data
 
 def smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist):
     '''
@@ -138,7 +139,7 @@ def smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist):
     hpbw_n -- new common FWHM (arcmin)?
     TO-DO: What are units of BMAJ?
     '''
-    print 'Smoothing data to HPBW of %f' % hpbw_n
+    print 'Smoothing data to HPBW of %f' % hpbw_n + 'arcmin'
     print 'Entering loop'
     tic = timeit.default_timer()
     datacube = pool.map(smoothloop, \
@@ -147,6 +148,7 @@ def smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist):
     toc = timeit.default_timer()
     print 'Time taken = %f' % (toc - tic)
     #print len(datacube)
+    datacube = [x for x in datacube if x is not None]
     datacube = np.array(datacube)
     return datacube
 
@@ -155,7 +157,6 @@ def writetofits(datadir, smoothcube, source, stoke):
     Write data to FITS file.
     TO-DO: Proper headers, proper filenames
     '''
-    print smoothcube.shape
     print 'Written to ' + datadir+source+'.'+stoke+'.smooth.fits'
     fits.writeto(datadir+source+'.'+stoke+'.smooth.fits', smoothcube)
 
