@@ -87,6 +87,7 @@ def getbigframe(datadir, sortlist):
     Set that to be the common smoothing FWHM.
     '''
     FWHM_list = []
+    freqlist = []
     for f in sortlist:
         #print datadir + f
         hdulist = fits.open(datadir + f)
@@ -94,8 +95,13 @@ def getbigframe(datadir, sortlist):
         head = hdu.header
         FWHM = head['BMAJ']
         FWHM_list.append(FWHM)
+        freq = head['CRVAL3']
+        freqlist.append(freq)
         hdulist.close()
+    freqlist = np.array(freqlist)
     FWHM_list = np.array(FWHM_list)
+    '''
+    Deprecated -- looks for biggest BMAJ
     hpbw_r = np.max(FWHM_list)*60 # In arcmin now
     hpbw_n = np.round(hpbw_r, decimals=3)
     loc = np.argmax(FWHM_list)
@@ -103,6 +109,15 @@ def getbigframe(datadir, sortlist):
     bighdu = fits.open(bigfile)[0]
     bighead = bighdu.header
     freq_r = bighead['CRVAL3']
+    '''
+    # Look for lowest frequency
+    loc = np.argmin(freqlist)
+    bigfile = datadir + sortlist[loc]
+    bighdu = fits.open(bigfile)[0]
+    bighead = bighdu.header
+    freq_r = bighead['CRVAL3']
+    hpbw_r = bighead['BMAJ']*60 # In arcmin now
+    hpbw_n = np.round(hpbw_r, decimals=3)
     return hpbw_r, freq_r, hpbw_n
 
 def smoothloop(args):
@@ -120,7 +135,7 @@ def smoothloop(args):
     #print data.shape
     hdulist.close()
     grid = abs(head['CDELT1'])
-    freq = head['CRVAL3'] + (i + 1 - head['CRPIX3']) * head['CDELT3']
+    freq = head['CRVAL3'] #+ (i + 1 - head['CRPIX3']) * head['CDELT3']
     hpbw_o = hpbw_r * (freq_r) / freq
     if hpbw_n <= hpbw_o:
         print 'continue'
