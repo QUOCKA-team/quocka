@@ -230,7 +230,7 @@ def writetodisk(datadir, smoothcube, source, stoke, sortlist, hpbw_n, freqs):
     print 'Written frequencies to ' + datadir+source+'.'+stoke+'.frequencies.txt'
     np.savetxt(datadir+source+'.'+stoke+'.frequencies.txt', freqs, fmt='%f')
     print 'Written FITS to ' + datadir+source+'.'+stoke+'.smooth.fits'
-    fits.writeto(datadir+source+'.'+stoke+'.smooth.fits', smoothcube)
+    fits.writeto(datadir+source+'.'+stoke+'.smooth.fits', smoothcube, targ_head)
 
 
 
