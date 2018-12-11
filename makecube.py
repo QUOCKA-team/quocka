@@ -160,9 +160,10 @@ if __name__ == "__main__":
     # Parse the command line options
     parser = argparse.ArgumentParser(description=descStr,
                                      formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument("--d", dest="datadir", default='.',     nargs=1,
-                       type=str, help="Directory containing data.")
-
+    #parser.add_argument("--d", dest="datadir", default='.', nargs=1,
+    #                   type=str, help="Directory containing data.")
+    parser.add_argument("datadir", metavar="datadir", nargs=1, default='.',
+                        type=str, help="Directory containing data.")
     args = parser.parse_args()
 
     datadir = args.datadir[0]
