@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 import os
 from astropy.convolution import convolve, convolve_fft, Gaussian2DKernel
+import timeit
 
 def list_files(directory, extension):
     '''
@@ -74,8 +75,8 @@ def getfreq(datadir, datalist):
         freqlist.append(freq)
     freqlist = np.array(freqlist)
     sortlisti = np.array([temp for _,temp in sorted(zip(freqlist, ilist))])
-    sortlistq = np.array([temp for _,temp in sorted(zip(freqlist, ilist))])
-    sortlistu = np.array([temp for _,temp in sorted(zip(freqlist, ilist))])
+    sortlistq = np.array([temp for _,temp in sorted(zip(freqlist, qlist))])
+    sortlistu = np.array([temp for _,temp in sorted(zip(freqlist, ulist))])
     freqlist = np.array(sorted(freqlist))
     return freqlist, [sortlisti, sortlistq, sortlistu]
 
@@ -104,7 +105,32 @@ def getbigframe(datadir, sortlist):
     freq_r = bighead['CRVAL3']
     return hpbw_r, freq_r, hpbw_n
 
-def smcube(hpbw_r, freq_r, hpbw_n, datadir, sortlist):
+def smoothloop(args):
+    hpbw_r, freq_r, hpbw_n, datadir, sortlist, i = \
+        args[0], args[1], args[2], args[3], args[4], args[5]
+    f = sortlist[i]
+    #print f
+    #print 'BEEP BOOP'
+    #print datadir
+    hdulist = fits.open(datadir + f)
+    hdu = hdulist[0]
+    head = hdu.header
+    data = hdu.data
+    data = data[0,0,:,:]
+    #print data.shape
+    hdulist.close()
+    grid = abs(head['CDELT1'])
+    freq = head['CRVAL3'] + (i + 1 - head['CRPIX3']) * head['CDELT3']
+    hpbw_o = hpbw_r * (freq_r) / freq
+    if hpbw_n <= hpbw_o:
+        print 'continue'
+    else:
+        hpbw = np.sqrt(hpbw_n**2 - hpbw_o**2) #/ 60.
+        g = Gaussian2DKernel(hpbw / (2. * np.sqrt(2. * np.log(2.))) / grid)
+        data = convolve(data, g, boundary='extend')
+    return data
+
+def smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist):
     '''
     Smooth data to common spatial resolution.
     hpbw_r -- reference FWHM (arcmin)?
@@ -113,28 +139,13 @@ def smcube(hpbw_r, freq_r, hpbw_n, datadir, sortlist):
     TO-DO: What are units of BMAJ?
     '''
     print 'Smoothing data to HPBW of %f' % hpbw_n
-    datacube = []
-    for i in tqdm(range(len(sortlist))):
-        f = sortlist[i]
-        #print f
-        #print datadir + f
-        hdulist = fits.open(datadir + f)
-        hdu = hdulist[0]
-        head = hdu.header
-        data = hdu.data
-        data = data[0,0,:,:]
-        #print data.shape
-        hdulist.close()
-        grid = abs(head['CDELT1'])
-        freq = head['CRVAL3'] + (i + 1 - head['CRPIX3']) * head['CDELT3']
-        hpbw_o = hpbw_r * (freq_r) / freq
-        if hpbw_n <= hpbw_o:
-            continue
-        hpbw = np.sqrt(hpbw_n**2 - hpbw_o**2) #/ 60.
-        g = Gaussian2DKernel(hpbw / (2. * np.sqrt(2. * np.log(2.))) / grid)
-        data = convolve(data, g, boundary='extend')
-        #print data.shape
-        datacube.append(data)
+    print 'Entering loop'
+    tic = timeit.default_timer()
+    datacube = pool.map(smoothloop, \
+        ([hpbw_r, freq_r, hpbw_n, datadir, sortlist, i] for i in range(len(sortlist))))
+    print 'Loop done'
+    toc = timeit.default_timer()
+    print 'Time taken = %f' % (toc - tic)
     #print len(datacube)
     datacube = np.array(datacube)
     return datacube
@@ -144,12 +155,15 @@ def writetofits(datadir, smoothcube, source, stoke):
     Write data to FITS file.
     TO-DO: Proper headers, proper filenames
     '''
+    print smoothcube.shape
+    print 'Written to ' + datadir+source+'.'+stoke+'.smooth.fits'
     fits.writeto(datadir+source+'.'+stoke+'.smooth.fits', smoothcube)
 
 
 
 if __name__ == "__main__":
     import argparse
+    import schwimmbad
 
     # Help string to be shown using the -h option
     descStr = """
@@ -164,7 +178,16 @@ if __name__ == "__main__":
     #                   type=str, help="Directory containing data.")
     parser.add_argument("datadir", metavar="datadir", nargs=1, default='.',
                         type=str, help="Directory containing data.")
+    group = parser.add_mutually_exclusive_group()
+
+    group.add_argument("--ncores", dest="n_cores", default=1,
+                       type=int, help="Number of processes (uses multiprocessing).")
+    group.add_argument("--mpi", dest="mpi", default=False,
+                       action="store_true", help="Run with MPI.")
+
+
     args = parser.parse_args()
+    pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
 
     datadir = args.datadir[0]
     print 'Combining data in ' + datadir
@@ -177,6 +200,7 @@ if __name__ == "__main__":
     hpbw_r, freq_r, hpbw_n = getbigframe(datadir, sortlist[0])
     #print hpbw_r, freq_r, hpbw_n
 
+
     for i in range(len(sortlist)):
         'Smoothing...'
         if i==0:
@@ -186,10 +210,10 @@ if __name__ == "__main__":
         if i==2:
             stoke = 'u'
         print 'Stokes ' + stoke
-        smoothcube = smcube(hpbw_r, freq_r, hpbw_n, datadir, sortlist[i])
+        smoothcube = smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist[i])
         'Writing to disk...'
         writetofits(datadir, smoothcube, source, stoke)
-
+    pool.close()
     print 'Done!'
 
 
