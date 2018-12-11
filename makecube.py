@@ -5,6 +5,7 @@ from tqdm import tqdm
 import os
 from astropy.convolution import convolve, convolve_fft, Gaussian2DKernel
 import timeit
+import pdb
 
 def list_files(directory, extension):
     '''
@@ -62,7 +63,7 @@ def getfreq(datadir, datalist):
     '''
     print 'Getting frequencies from Stokes I headers...'
     ilist, qlist, ulist = datalist
-    freqlist = []
+    freqi = []
     for f in ilist:
         #print datadir + f
         hdulist = fits.open(datadir + f)
@@ -72,15 +73,41 @@ def getfreq(datadir, datalist):
         head = hdu.header
         hdulist.close()
         freq = head['CRVAL3']
-        freqlist.append(freq)
+        freqi.append(freq)
+    freqq = []
+    for f in qlist:
+        #print datadir + f
+        hdulist = fits.open(datadir + f)
+        hdu = hdulist[0]
+        data = hdu.data
+        #print data.shape
+        head = hdu.header
+        hdulist.close()
+        freq = head['CRVAL3']
+        freqq.append(freq)
 
-    freqlist = np.array(freqlist)
-    sortlisti = np.array([temp for _,temp in sorted(zip(freqlist, ilist))])
-    sortlistq = np.array([temp for _,temp in sorted(zip(freqlist, qlist))])
-    sortlistu = np.array([temp for _,temp in sorted(zip(freqlist, ulist))])
-    freqlist = np.array(sorted(freqlist))
-    print freqlist
-    return freqlist, [sortlisti, sortlistq, sortlistu]
+    frequ = []
+    for f in ulist:
+        #print datadir + f
+        hdulist = fits.open(datadir + f)
+        hdu = hdulist[0]
+        data = hdu.data
+        #print data.shape
+        head = hdu.header
+        hdulist.close()
+        freq = head['CRVAL3']
+        frequ.append(freq)
+
+    freqi = np.array(freqi)
+    freqi, sortlisti = zip(*sorted(zip(freqi, ilist)))
+
+    freqq = np.array(freqq)
+    freqq, sortlistq = zip(*sorted(zip(freqq, qlist)))
+
+    frequ = np.array(frequ)
+    frequ, sortlistu = zip(*sorted(zip(frequ, ulist)))
+    #print freqlist
+    return freqi, [sortlisti, sortlistq, sortlistu]
 
 def getbigframe(datadir, sortlist):
     '''
@@ -123,6 +150,7 @@ def getbigframe(datadir, sortlist):
     return hpbw_r, freq_r, hpbw_n
 
 def smoothloop(args):
+    #pdb.set_trace()
     hpbw_r, freq_r, hpbw_n, datadir, sortlist, i = \
         args[0], args[1], args[2], args[3], args[4], args[5]
     f = sortlist[i]
@@ -138,7 +166,7 @@ def smoothloop(args):
     hdulist.close()
     grid = abs(head['CDELT1'])
     freq = head['CRVAL3'] #+ (i + 1 - head['CRPIX3']) * head['CDELT3']
-    print freq
+    #print freq
     hpbw_o = hpbw_r * (freq_r) / freq
     if hpbw_n <= hpbw_o:
         print 'continue'
@@ -233,14 +261,14 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
-
+    pdb.set_trace()
     datadir = args.datadir[0]
     print 'Combining data in ' + datadir
     source, ilist, qlist, ulist = readfiles(datadir)
 
     freqlist, sortlist = getfreq(datadir, [ilist, qlist, ulist])
     #print freqlist/1e6
-    #print sortlist
+    print sortlist
 
     hpbw_r, freq_r, hpbw_n = getbigframe(datadir, sortlist[0])
     #print hpbw_r, freq_r, hpbw_n
