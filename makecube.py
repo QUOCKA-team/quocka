@@ -261,14 +261,14 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
-    pdb.set_trace()
+    #pdb.set_trace()
     datadir = args.datadir[0]
     print 'Combining data in ' + datadir
     source, ilist, qlist, ulist = readfiles(datadir)
 
     freqlist, sortlist = getfreq(datadir, [ilist, qlist, ulist])
     #print freqlist/1e6
-    print sortlist
+    #print sortlist
 
     hpbw_r, freq_r, hpbw_n = getbigframe(datadir, sortlist[0])
     #print hpbw_r, freq_r, hpbw_n
