@@ -149,14 +149,20 @@ def main(args,cfg):
 			call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
 			call(['gpcal','in=%s'%seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
 			call(['gpboot','vis=%s'%seccalname,'cal=%s'%pricalname],stdout=logf,stderr=logf)
-		if len(seccalnames) == 2:
-			call(['gpcopy','vis=%s'%seccalnames[0],'out=%s'%seccalnames[1],'mode=merge'],stdout=logf,stderr=logf)
-			seccalname = seccalnames[1]
-		elif len(seccalnames) == 1:
-			seccalname = seccalnames[0]
-		else:
-			logprint('Error: too many secondaries, fix me!!',logf)
-			exit(1)
+		#if len(seccalnames) == 2:
+		#	call(['gpcopy','vis=%s'%seccalnames[0],'out=%s'%seccalnames[1],'mode=merge'],stdout=logf,stderr=logf)
+		#	seccalname = seccalnames[1]
+		#elif len(seccalnames) == 1:
+		#	seccalname = seccalnames[0]
+		#else:
+		#	logprint('Error: too many secondaries, fix me!!',logf)
+		#	exit(1)
+		while len(seccalnames) > 1:
+			logprint('Merging gain table for %s into %s ...'%(seccalnames[-1],seccalnames[0]),logf)
+			call(['gpcopy','vis=%s'%seccalnames[-1],'out=%s'%seccalnames[0],'mode=merge'],stdout=logf,stderr=logf)
+			del seccalnames[-1]
+		seccalname = seccalnames[0]
+		logprint('Using gains from %s ...'%(seccalname),logf)
 		if seccal_ext != 'NONE':
 			logprint('Transferring to extended-source secondary...',logf)
 			call(['gpcopy','vis=%s'%pricalname,'out=%s'%ext_seccalname],stdout=logf,stderr=logf)
