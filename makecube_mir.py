@@ -192,10 +192,10 @@ def smoothloop(args):
 		print 'continue'
 		pass
 	else:
-		call(['fits','op=xyin','in=%s'%(datadir+f),'out=tmp'],stdin=None, stdout=None, stderr=None, shell=False)
-		call(['convol','map=tmp','fwhm=%f'%(hpbw_n*60.),'options=final','out=tmpc'],stdin=None, stdout=None, stderr=None, shell=False)
-		call(['fits','op=xyout','in=tmpc','out=tmpc.fits'],stdin=None, stdout=None, stderr=None, shell=False)
-		hdulist = fits.open('tmpc.fits')
+		call(['fits','op=xyin','in=%s'%(datadir+f),'out=tmp_%04d'%(i)],stdin=None, stdout=None, stderr=None, shell=False)
+		call(['convol','map=tmp_%04d'%(i),'fwhm=%f'%(hpbw_n*60.),'options=final','out=tmpc_%04d'%(i)],stdin=None, stdout=None, stderr=None, shell=False)
+		call(['fits','op=xyout','in=tmpc_%04d'%(i),'out=tmpc_%04d.fits'%(i)],stdin=None, stdout=None, stderr=None, shell=False)
+		hdulist = fits.open('tmpc_%04d.fits'%(i))
 		hdu = hdulist[0]
 		#head = hdu.header
 		#freq = head['CRVAL3']
@@ -203,9 +203,9 @@ def smoothloop(args):
 		data = data[0,0,:,:]
 		#print data.shape
 		hdulist.close()
-		call(['rm','-rf','tmp'])
-		call(['rm','-rf','tmpc'])
-		call(['rm','-rf','tmpc.fits'])
+		call(['rm','-rf','tmp_%04d'%(i)])
+		call(['rm','-rf','tmpc_%04d'%(i)])
+		call(['rm','-rf','tmpc_%04d.fits'%(i)])
 		return [data, freq]
 
 def smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist):
