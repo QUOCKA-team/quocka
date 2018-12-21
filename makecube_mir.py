@@ -187,7 +187,8 @@ def smoothloop(args):
 	head = hdu.header
 	freq = head['CRVAL3']
 	hdulist.close()
-	hpbw_o = hpbw_r * (freq_r) / freq
+	#hpbw_o = hpbw_r * (freq_r) / freq
+	hpbw_o = head['BMAJ']*60. # arcminutes
 	if hpbw_n <= hpbw_o:
 		print 'continue'
 		pass
