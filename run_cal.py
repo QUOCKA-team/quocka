@@ -145,9 +145,9 @@ def main(args,cfg):
 			call(['gpcopy','vis=%s'%pricalname,'out=%s'%seccalname],stdout=logf,stderr=logf)
 			call(['puthd','in=%s/interval'%seccalname,'value=100000'],stdout=logf,stderr=logf)
 			call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
-			call(['gpcal','in=%s'%seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
+			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
 			call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
-			call(['gpcal','in=%s'%seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
+			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
 			call(['gpboot','vis=%s'%seccalname,'cal=%s'%pricalname],stdout=logf,stderr=logf)
 		#if len(seccalnames) == 2:
 		#	call(['gpcopy','vis=%s'%seccalnames[0],'out=%s'%seccalnames[1],'mode=merge'],stdout=logf,stderr=logf)
@@ -168,9 +168,9 @@ def main(args,cfg):
 			call(['gpcopy','vis=%s'%pricalname,'out=%s'%ext_seccalname],stdout=logf,stderr=logf)
 			call(['puthd','in=%s/interval'%ext_seccalname,'value=100000'],stdout=logf,stderr=logf)
 			call(['pgflag','vis=%s'%ext_seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
-			call(['gpcal','in=%s'%ext_seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
+			call(['gpcal','vis=%s'%ext_seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
 			call(['pgflag','vis=%s'%ext_seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
-			call(['gpcal','in=%s'%ext_seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
+			call(['gpcal','vis=%s'%ext_seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
 			call(['gpboot','vis=%s'%ext_seccalname,'cal=%s'%pricalname],stdout=logf,stderr=logf)
 			logprint('\n\n##########\nApplying calibration to extended sources...\n##########\n\n',logf)
 			for t in ext_targetnames:
