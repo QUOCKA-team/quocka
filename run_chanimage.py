@@ -35,6 +35,8 @@ for vis in vislist:
     call(['fits','op=xyout','in=%s.d.%s.mfs.i'%(sourcename,freqband),'out=%s.d.%s.mfs.i.fits'%(sourcename,freqband)],
 		stdin=None, stdout=None, stderr=None, shell=False)
     imnoise = getnoise('%s.d.%s.mfs.i.fits'%(sourcename,freqband))
+    # XZ: print the image noise
+    print 'Image noise is:', imnoise
     call(['clean','map=%s.d.%s.mfs.i'%(sourcename,freqband),
                                 'beam=%s.beam.%s.mfs'%(sourcename,freqband),
                                 'out=%s.model.%s.mfs'%(sourcename,freqband),
