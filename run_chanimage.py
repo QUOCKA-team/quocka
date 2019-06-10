@@ -35,12 +35,12 @@ for vis in vislist:
     call(['fits','op=xyout','in=%s.d.%s.mfs.i'%(sourcename,freqband),'out=%s.d.%s.mfs.i.fits'%(sourcename,freqband)],
 		stdin=None, stdout=None, stderr=None, shell=False)
     imnoise = getnoise('%s.d.%s.mfs.i.fits'%(sourcename,freqband))
-    # XZ: print the image noise
+    # XZ: print the image noise, and try changing the cutoff level
     print 'Image noise is:', imnoise
     call(['clean','map=%s.d.%s.mfs.i'%(sourcename,freqband),
                                 'beam=%s.beam.%s.mfs'%(sourcename,freqband),
                                 'out=%s.model.%s.mfs'%(sourcename,freqband),
-                                'cutoff=%f'%(2.*imnoise),'niters=100000'],
+                                'cutoff=%f'%(4.*imnoise),'niters=100000'],
                                 stdin=None, stdout=None, stderr=None, shell=False)
     call(['restor','map=%s.d.%s.mfs.i'%(sourcename,freqband),
                                 'beam=%s.beam.%s.mfs'%(sourcename,freqband),
@@ -61,15 +61,15 @@ for vis in vislist:
     call(['rm','-rf','%s.restor.%s.mfs.fits'%(sourcename,freqband)])
 
     for i in range(1,2049,10):
-    #for i in range(1,128,10):
+    #for i in range(1,128,10):  # XZ: add stokes V images
 	call(['invert','vis=%s.%s'%(sourcename,freqband),
-		'map=%s.d.%s.%04d.i'%(sourcename,freqband,i)+',%s.d.%s.%04d.q'%(sourcename,freqband,i)+ ',%s.d.%s.%04d.u'%(sourcename,freqband,i),
+		'map=%s.d.%s.%04d.i'%(sourcename,freqband,i)+',%s.d.%s.%04d.q'%(sourcename,freqband,i)+ ',%s.d.%s.%04d.u'%(sourcename,freqband,i)+ ',%s.d.%s.%04d.v'%(sourcename,freqband,i),
 		'beam=%s.beam.%s.%04d'%(sourcename,freqband,i),
-		'imsize=1024','cell=1','robust=0.5','stokes=i,q,u',selstring,
+		'imsize=1024','cell=1','robust=0.5','stokes=i,q,u,v',selstring,
 		'options=mfs,double','line=chan,10,'+str(i)],
 		stdin=None, stdout=None, stderr=None, shell=False)
 
-	for stokes in ['i','q','u']:
+	for stokes in ['i','q','u','v']:
 		 if not os.path.exists('%s.d.%s.%04d.%s'%(sourcename,freqband,i,stokes)):
                 	    continue
             	 else:
