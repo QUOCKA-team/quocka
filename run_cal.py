@@ -9,6 +9,11 @@ def logprint(s2p,lf):
 	print >>lf, s2p
 	print s2p
 
+def flag(src, logf):
+	call(['pgflag','vis=%s'%src,'stokes=i,q,u,v','flagpar=8,5,5,3,6,3','command=<b','options=nodisp'],stdout=logf,stderr=logf)
+	call(['pgflag','vis=%s'%src,'stokes=i,v,u,q','flagpar=8,2,2,3,6,3','command=<b','options=nodisp'],stdout=logf,stderr=logf)
+	call(['pgflag','vis=%s'%src,'stokes=i,v,q,u','flagpar=8,2,2,3,6,3','command=<b','options=nodisp'],stdout=logf,stderr=logf)
+	
 def main(args,cfg):
 	# Initiate log file with options used
 	logf = open(args.log_file,'w',1) # line buffered
