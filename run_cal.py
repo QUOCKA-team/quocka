@@ -9,10 +9,14 @@ def logprint(s2p,lf):
 	print >>lf, s2p
 	print s2p
 
+# Pgflagging lines, following the ATCA users guide. Pgflagging needs to be done on all the calibrators and targets.
 def flag(src, logf):
 	call(['pgflag','vis=%s'%src,'stokes=i,q,u,v','flagpar=8,5,5,3,6,3','command=<b','options=nodisp'],stdout=logf,stderr=logf)
 	call(['pgflag','vis=%s'%src,'stokes=i,v,u,q','flagpar=8,2,2,3,6,3','command=<b','options=nodisp'],stdout=logf,stderr=logf)
 	call(['pgflag','vis=%s'%src,'stokes=i,v,q,u','flagpar=8,2,2,3,6,3','command=<b','options=nodisp'],stdout=logf,stderr=logf)
+
+# change nfbin to 4
+NFBIN = 4
 	
 def main(args,cfg):
 	# Initiate log file with options used
@@ -127,7 +131,8 @@ def main(args,cfg):
 				continue
 			logprint('\nFLAGGING: %d / %d = %s'%(i+1,len(slist),source),logf)
 			####
-			# This part may be largely obsolete with options=rfiflag in ATLOD
+			# This part may be largely obsolete with options=rfiflag in ATLOD.
+			# However, options=rfiflag doesn't cover all the badchans, so we'll still do this. -XZ
 			for line in open('../badchans_%s.txt'%frqid):
 				sline=line.split()
 				lc,uc=sline[0].split('-')
@@ -135,9 +140,13 @@ def main(args,cfg):
 				call(['uvflag','vis=%s'%source,'line=chan,%d,%s'%(dc,lc),'flagval=flag'],stdout=logf,stderr=logf)
 			####
 			#call(['pgflag','vis=%s'%source,'stokes=xx,yy,yx,xy','flagpar=20,10,10,3,5,3,20','command=<be','options=nodisp'])
-			call(['uvflag','vis=%s'%source,'select=amplitude(2),polarization(xy,yx)','flagval=flag'],stdout=logf,stderr=logf)
-			call(['uvpflag','vis=%s'%source,'polt=xy,yx','pols=xx,xy,yx,yy','options=or'],stdout=logf,stderr=logf)
-			call(['pgflag','vis=%s'%source,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+# 			call(['uvflag','vis=%s'%source,'select=amplitude(2),polarization(xy,yx)','flagval=flag'],stdout=logf,stderr=logf)
+# 			call(['uvpflag','vis=%s'%source,'polt=xy,yx','pols=xx,xy,yx,yy','options=or'],stdout=logf,stderr=logf)
+# 			call(['pgflag','vis=%s'%source,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+			
+			# First round of pgflag for all sources.
+			flag(source, logf)
+	
 		logprint('Calibration of primary cal (%s) proceeding ...'%prical,logf)
 		call(['mfcal','vis=%s'%pricalname,'interval=10000','select=elevation(40,90)'],stdout=logf,stderr=logf)
 		call(['pgflag','vis=%s'%pricalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
