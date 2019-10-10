@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+
+from __future__ import division, print_function
 from astropy.io import fits
 import numpy as np
 from tqdm import tqdm
@@ -6,22 +8,28 @@ import os
 from astropy.convolution import convolve, convolve_fft, Gaussian2DKernel
 import timeit
 import pdb
-
-def list_files(directory, extension):
-    '''
-    Find all files with given extension.
-    '''
-    for (dirpath, dirnames, filenames) in os.walk(directory):
-        return (f for f in filenames if f.endswith('.' + extension))
+from glob import glob
 
 
 def readfiles(datadir):
-    '''
-    Read list of fits files from data-directory.
-    Split by Stokes.
-    '''
+    """Reads list of FITS files from data-directory.
+
+    Finds and returns the list of FITS files in a directory, and splits them
+    by Stokes. Filenames must comply with the Quocka filename convention.
+
+    Args:
+        datadir: Sting of path to directory containing data in FITS file
+        format.
+        No trailing '/'!
+
+    Returns:
+        source: Name of source (str).
+        ilist: List of Stokes I images.
+        qlist: List of Stokes Q images.
+        ulist: List of Stokes U images.
+    """
     print 'Getting data -- Splitting by Stokes...'
-    files = list_files(datadir,'fits')
+    files = glob(datadir+'/'+'*.fits')
     filelist = []
     chanlist = []
     freqlist = []
@@ -35,9 +43,7 @@ def readfiles(datadir):
         chanlist.append(int(chan))
         stok = f[20]
         stoklist.append(stok)
-        #print str(f)
-        #print freq
-        #print chan
+
     stoklist = np.array(stoklist)
     filelist = np.array(filelist)
     freqlist = np.array(freqlist)
@@ -57,47 +63,41 @@ def readfiles(datadir):
     return source, ilist, qlist, ulist
 
 def getfreq(datadir, datalist):
-    '''
-    Get frequencies from headers.
-    Sort file list by frequency.
+    '''Parse the frequency information from FITS images.
+
+    Loops over files in data directory, pulls out the frequency information,
+    and sorts file list by frequency.
+
+    Args:
+        datadir: Sting of path to directory containing data in FITS file
+        format. No trailing '/'!
+        datalist: List containing [ilist, qlist, ulist], as produced by
+        readfiles
+
+    Returns:
+        freqi: List of frequencies as given by Stokes I images
+        sortlist: List of [sortlisti, sortlistq, sortlistu]. Each of which
+        contain the Stokes I, Q, U filelist, respectively, sorted by
+        frequency.
+
     '''
     print 'Getting frequencies from Stokes I headers...'
     ilist, qlist, ulist = datalist
     freqi = []
     for f in ilist:
-        #print datadir + f
-        hdulist = fits.open(datadir + f)
-        hdu = hdulist[0]
-        data = hdu.data
-        #print data.shape
-        head = hdu.header
-        hdulist.close()
-        freq = head['CRVAL3']
-        freqi.append(freq)
+        with fits.open(datadir + f, mode='denywrite')[0] as hdu:
+            freqi.append(hdu.header['CRVAL3'])
     freqq = []
     for f in qlist:
-        #print datadir + f
-        hdulist = fits.open(datadir + f)
-        hdu = hdulist[0]
-        data = hdu.data
-        #print data.shape
-        head = hdu.header
-        hdulist.close()
-        freq = head['CRVAL3']
-        freqq.append(freq)
+        with fits.open(datadir + f, mode='denywrite')[0] as hdu:
+            freqq.append(hdu.header['CRVAL3'])
 
     frequ = []
     for f in ulist:
-        #print datadir + f
-        hdulist = fits.open(datadir + f)
-        hdu = hdulist[0]
-        data = hdu.data
-        #print data.shape
-        head = hdu.header
-        hdulist.close()
-        freq = head['CRVAL3']
-        frequ.append(freq)
+        with fits.open(datadir + f, mode='denywrite')[0] as hdu:
+            frequ.append(hdu.header['CRVAL3'])
 
+    # Sort by frequency
     freqi = np.array(freqi)
     freqi, sortlisti = zip(*sorted(zip(freqi, ilist)))
 
@@ -106,78 +106,76 @@ def getfreq(datadir, datalist):
 
     frequ = np.array(frequ)
     frequ, sortlistu = zip(*sorted(zip(frequ, ulist)))
-    #print freqlist
-    return freqi, [sortlisti, sortlistq, sortlistu]
+    sortlist = [sortlisti, sortlistq, sortlistu]
+    return freqi, sortlist
 
 def getbigframe(datadir, sortlist):
     '''
     Get all BMAJ from files.
-    Find biggest one.
+    Find biggest one using the lowest frequency.
     Set that to be the common smoothing FWHM.
     '''
-    FWHM_list = []
+
     freqlist = []
     for f in sortlist:
-        #print datadir + f
-        hdulist = fits.open(datadir + f)
-        hdu = hdulist[0]
-        head = hdu.header
-        FWHM = head['BMAJ']
-        FWHM_list.append(FWHM)
-        freq = head['CRVAL3']
-        freqlist.append(freq)
-        hdulist.close()
+        with fits.open(datadir + f, mode='denywrite')[0] as hdu:
+            freqlist.append(hdu.header['CRVAL3'])
+
     freqlist = np.array(freqlist)
-    FWHM_list = np.array(FWHM_list)
-    '''
-    Deprecated -- looks for biggest BMAJ
-    hpbw_r = np.max(FWHM_list)*60 # In arcmin now
-    hpbw_n = np.round(hpbw_r, decimals=3)
-    loc = np.argmax(FWHM_list)
-    bigfile = datadir + sortlist[loc]
-    bighdu = fits.open(bigfile)[0]
-    bighead = bighdu.header
-    freq_r = bighead['CRVAL3']
-    '''
+
     # Look for lowest frequency
     loc = np.argmin(freqlist)
     bigfile = datadir + sortlist[loc]
-    bighdu = fits.open(bigfile)[0]
-    bighead = bighdu.header
-    freq_r = bighead['CRVAL3']
-    hpbw_r = bighead['BMAJ']*60 # In arcmin now
-    hpbw_n = np.round(hpbw_r, decimals=3)
-    return hpbw_r, freq_r, hpbw_n
+    bighdu =  fits.open(bigfile, mode='denywrite')[0]
+    return bighdu
 
 def smoothloop(args):
-    #pdb.set_trace()
-    hpbw_r, freq_r, hpbw_n, datadir, sortlist, i = \
-        args[0], args[1], args[2], args[3], args[4], args[5]
-    f = sortlist[i]
-    #print f
-    #print 'BEEP BOOP'
-    #print datadir
-    hdulist = fits.open(datadir + f)
-    hdu = hdulist[0]
-    head = hdu.header
-    data = hdu.data
-    data = data[0,0,:,:]
-    #print data.shape
-    hdulist.close()
+    bighdu, datadir, f = args
+
+    with fits.open(datadir + f)[0] as hdu:
+        hdu = hdulist[0]
+        head = hdu.header
+        data = hdu.data[0,0,:,:]
+
     grid = abs(head['CDELT1'])
-    freq = head['CRVAL3'] #+ (i + 1 - head['CRPIX3']) * head['CDELT3']
-    #print freq
-    hpbw_o = hpbw_r * (freq_r) / freq
-    if hpbw_n <= hpbw_o:
+    freq = head['CRVAL3']
+
+    freq_r = bighdu.header['CRVAL3']
+
+    # Reference resolution
+    bmaj_r = bighdu.header['BMAJ']
+    bmin_r = bighdu.header['BMIN']
+
+    # Old resolution
+    bmaj_o = head['BMAJ']
+    bmin_o = head['BMIN']
+
+    # New common resolution
+    bmaj_n = np.round(bmaj_r*60, decimals=3)/60.
+    bmin_n = np.round(bmin_r*60, decimals=3)/60.
+
+    # Sanity check -- New resolution should be greater than old
+    if bmaj_n <= bmaj_o:
         print 'continue'
         pass
+
     else:
-        hpbw = np.sqrt(hpbw_n**2 - hpbw_o**2) / 60.
-        g = Gaussian2DKernel(hpbw / (2. * np.sqrt(2. * np.log(2.))) / grid)
-        data = convolve(data, g, boundary='extend')
+        pa = np.deg2rad(head['BPA'])
+
+        conv_width_maj = np.sqrt(bmaj_n ** 2 - bmaj_o ** 2)
+        conv_width_min = np.sqrt(bmin_n ** 2 - bmin_o** 2)
+
+        sig_min = conv_width_min / (2 * np.sqrt(2 * np.log(2))) / grid
+        sig_maj = conv_width_maj / (2 * np.sqrt(2 * np.log(2))) / grid
+
+        g = Gaussian2DKernel(
+            sig_min,
+            sig_maj,
+            theta=pa)
+        data = convolve(data, g, boundary='extend') * (2 * np.pi * sig_min * sig_maj)
         return [data, freq]
 
-def smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist):
+def smcube(pool, freq_r, datadir, sortlist):
     '''
     Smooth data to common spatial resolution.
     hpbw_r -- reference FWHM (arcmin)?
@@ -188,21 +186,20 @@ def smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist):
     print 'Smoothing data to HPBW of %f' % hpbw_n + 'arcmin'
     print 'Entering loop'
     tic = timeit.default_timer()
-    output = pool.map(smoothloop, \
-        ([hpbw_r, freq_r, hpbw_n, datadir, sortlist, i] for i in range(len(sortlist))))
+    output = pool.map(smoothloop,
+        ([freq_r, datadir, f] for f in sortlist))
     print 'Loop done'
     toc = timeit.default_timer()
     print 'Time taken = %f' % (toc - tic)
-    #print len(datacube)
+
     output = [x for x in output if x is not None]
-    #print 'BEEP BOOP'
+
     datacube = []
     freqs = []
     for i in range(len(output)):
         datacube.append(output[i][0])
         freqs.append(output[i][1])
-    #datacube = [x for x in datacube if x is not None]
-    #freqs = [x for x in freqs if x is not None]
+
     freqs = np.array(freqs)
     datacube = np.array(datacube)
     return datacube, freqs
@@ -232,6 +229,27 @@ def writetodisk(datadir, smoothcube, source, stoke, sortlist, hpbw_n, freqs):
     print 'Written FITS to ' + datadir+source+'.'+stoke+'.smooth.fits'
     fits.writeto(datadir+source+'.'+stoke+'.smooth.fits', smoothcube, targ_head)
 
+def main(pool, datadir):
+    print 'Combining data in ' + datadir
+    source, ilist, qlist, ulist = readfiles(datadir)
+
+    freqlist, sortlist = getfreq(datadir, [ilist, qlist, ulist])
+    bighdu = getbigframe(datadir, sortlist[0])
+
+    for i in range(len(sortlist)):
+        print 'Smoothing...'
+        if i==0:
+            stoke = 'i'
+        if i==1:
+            stoke = 'q'
+        if i==2:
+            stoke = 'u'
+        print 'Stokes ' + stoke
+        smoothcube, freqs = smcube(pool, bighdu, datadir, sortlist[i])
+        print 'Writing to disk...'
+        writetodisk(datadir, smoothcube, source, stoke, sortlist, hpbw_n, freqs)
+    pool.close()
+    print 'Done!'
 
 
 if __name__ == "__main__":
@@ -247,8 +265,6 @@ if __name__ == "__main__":
     # Parse the command line options
     parser = argparse.ArgumentParser(description=descStr,
                                      formatter_class=argparse.RawTextHelpFormatter)
-    #parser.add_argument("--d", dest="datadir", default='.', nargs=1,
-    #                   type=str, help="Directory containing data.")
     parser.add_argument("datadir", metavar="datadir", nargs=1, default='.',
                         type=str, help="Directory containing data.")
     group = parser.add_mutually_exclusive_group()
@@ -261,33 +277,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
-    #pdb.set_trace()
+
+    if args.mpi:
+        if not pool.is_master():
+            pool.wait()
+            sys.exit(0)
+
     datadir = args.datadir[0]
-    print 'Combining data in ' + datadir
-    source, ilist, qlist, ulist = readfiles(datadir)
 
-    freqlist, sortlist = getfreq(datadir, [ilist, qlist, ulist])
-    #print freqlist/1e6
-    #print sortlist
+    main(pool, datadir)
 
-    hpbw_r, freq_r, hpbw_n = getbigframe(datadir, sortlist[0])
-    #print hpbw_r, freq_r, hpbw_n
-
-
-    for i in range(len(sortlist)):
-        'Smoothing...'
-        if i==0:
-            stoke = 'i'
-        if i==1:
-            stoke = 'q'
-        if i==2:
-            stoke = 'u'
-        print 'Stokes ' + stoke
-        smoothcube, freqs = smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist[i])
-        'Writing to disk...'
-        writetodisk(datadir, smoothcube, source, stoke, sortlist, hpbw_n, freqs)
-    pool.close()
-    print 'Done!'
 
 
 
