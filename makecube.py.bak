@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-
+from __future__ import division, print_function
 from astropy.io import fits
 import numpy as np
 from tqdm import tqdm
@@ -106,13 +106,13 @@ def getfreq(datalist, verbose=False):
 
     # Sort by frequency
     freqi = np.array(freqi)
-    freqi, sortlisti = list(zip(*sorted(zip(freqi, ilist))))
+    freqi, sortlisti = zip(*sorted(zip(freqi, ilist)))
 
     freqq = np.array(freqq)
-    freqq, sortlistq = list(zip(*sorted(zip(freqq, qlist))))
+    freqq, sortlistq = zip(*sorted(zip(freqq, qlist)))
 
     frequ = np.array(frequ)
-    frequ, sortlistu = list(zip(*sorted(zip(frequ, ulist))))
+    frequ, sortlistu = zip(*sorted(zip(frequ, ulist)))
     sortlist = [sortlisti, sortlistq, sortlistu]
     return freqi, sortlist
 

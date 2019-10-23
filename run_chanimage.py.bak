@@ -5,14 +5,14 @@
 # Updated by GH and PP 10 December 2018
 
 import sys, pyfits 
-import argparse, configparser
+import argparse, ConfigParser
 import glob, os
 from subprocess import call
 from numpy import unique,std
 
 sourcename = sys.argv[1]
 vislist = sorted(glob.glob(sourcename+'.????'))
-print(vislist)
+print vislist
 
 def getnoise(fitsname):
 	h = pyfits.open(fitsname)
@@ -36,7 +36,7 @@ for vis in vislist:
 		stdin=None, stdout=None, stderr=None, shell=False)
     imnoise = getnoise('%s.d.%s.mfs.i.fits'%(sourcename,freqband))
     # XZ: print the image noise, and try changing the cutoff level
-    print('Image noise is:', imnoise)
+    print 'Image noise is:', imnoise
     call(['clean','map=%s.d.%s.mfs.i'%(sourcename,freqband),
                                 'beam=%s.beam.%s.mfs'%(sourcename,freqband),
                                 'out=%s.model.%s.mfs'%(sourcename,freqband),

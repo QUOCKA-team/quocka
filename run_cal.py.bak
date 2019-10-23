@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
-import argparse, configparser
+import argparse, ConfigParser
 import glob, os
 from subprocess import call
 from numpy import unique
 
 def logprint(s2p,lf):
-	print(s2p, file=lf)
-	print(s2p)
+	print >>lf, s2p
+	print s2p
 
 def main(args,cfg):
 	# Initiate log file with options used
@@ -212,7 +212,7 @@ ap.add_argument('-s','--setup_file',help='Name of text file with setup correlato
 ap.add_argument('-l','--log_file',help='Name of output log file [default log.txt]',default='log.txt')
 args = ap.parse_args()
 
-cfg = configparser.RawConfigParser()
+cfg = ConfigParser.RawConfigParser()
 cfg.read(args.config_file)
 
 main(args,cfg)
