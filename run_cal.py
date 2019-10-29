@@ -147,26 +147,52 @@ def main(args,cfg):
 			# First round of pgflag for all sources.
 			flag(source, logf)
 	
+		# Flagging/calibrating the primary calibrator 1934-638. 
 		logprint('Calibration of primary cal (%s) proceeding ...'%prical,logf)
-		call(['mfcal','vis=%s'%pricalname,'interval=10000','select=elevation(40,90)'],stdout=logf,stderr=logf)
-		call(['pgflag','vis=%s'%pricalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
-		call(['mfcal','vis=%s'%pricalname,'interval=10000','select=elevation(40,90)'],stdout=logf,stderr=logf)
-		call([ 'gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=16', 'options=xyvary','select=elevation(40,90)'],stdout=logf,stderr=logf)
-		call(['pgflag','vis=%s'%pricalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
-		call([ 'gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=16', 'options=xyvary','select=elevation(40,90)'],stdout=logf,stderr=logf)
+		# Only select data above elevation=40.
+		call(['uvflag','vis=%s'%pricalname, 'select=-elevation(40,90)', 'flagval=flag'],stdout=logf,stderr=logf)
+		# First round of calibrating. Apply the solutions.
+		call(['mfcal','vis=%s'%pricalname,'interval=0.1,1,30'],stdout=logf,stderr=logf)
+		call([ 'gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=%d'%NFBIN, 'options=xyvary'],stdout=logf,stderr=logf)
+		pricalname_c1 = pricalname + '_c1'
+		call(['uvaver', 'vis=%s'%pricalname, 'out=%s'%pricalname_c1],stdout=logf,stderr=logf)
+		
+		# Second round of flagging/calibrating
+		
+		flag(pricalname_c1, logf)
+		call(['mfcal','vis=%s'%pricalname_c1,'interval=0.1,1,30'],stdout=logf,stderr=logf)
+		call([ 'gpcal', 'vis=%s'%pricalname_c1, 'interval=0.1', 'nfbin=%d'%NFBIN, 'options=xyvary'],stdout=logf,stderr=logf)
+		pricalname_c2 = pricalname + '_c2'
+		call(['uvaver', 'vis=%s'%pricalname_c1, 'out=%s'%pricalname_c2],stdout=logf,stderr=logf)
+		
+# 		call(['pgflag','vis=%s'%pricalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+# 		call(['mfcal','vis=%s'%pricalname,'interval=10000','select=elevation(40,90)'],stdout=logf,stderr=logf)
+# 		call([ 'gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=16', 'options=xyvary','select=elevation(40,90)'],stdout=logf,stderr=logf)
+# 		call(['pgflag','vis=%s'%pricalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+# 		call([ 'gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=16', 'options=xyvary','select=elevation(40,90)'],stdout=logf,stderr=logf)
+
+		# Move on to the secondary calibrator
 		for seccalname in seccalnames:
 			logprint('Transferring to compact-source secondary %s...'%seccalname,logf)
-			call(['gpcopy','vis=%s'%pricalname,'out=%s'%seccalname],stdout=logf,stderr=logf)
-			call(['puthd','in=%s/interval'%seccalname,'value=100000'],stdout=logf,stderr=logf)
-			call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
-			##call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
-			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=16','options=nopol,noxy'],stdout=logf,stderr=logf)
-			call(['gpedit','vis=%s'%seccalname,'options=phase'],stdout=logf,stderr=logf)
-			call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
-			##call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
-			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=16','options=nopol,noxy'],stdout=logf,stderr=logf)
-			call(['gpedit','vis=%s'%seccalname,'options=phase'],stdout=logf,stderr=logf)
-			call(['gpboot','vis=%s'%seccalname,'cal=%s'%pricalname],stdout=logf,stderr=logf)
+			call(['gpcopy','vis=%s'%pricalname_c2,'out=%s'%seccalname, 'mode=merge'],stdout=logf,stderr=logf)
+			# flag twice, gpcal twice
+			flag(seccalname, logf)
+			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=%d'%NFBIN,'options=xyvary,qusolve'],stdout=logf,stderr=logf)
+			flag(seccalname, logf)
+			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=%d'%NFBIN,'options=xyvary,qusolve'],stdout=logf,stderr=logf)
+			# boot the flux
+			call(['gpboot','vis=%s'%seccalname,'cal=%s'%pricalname_c2],stdout=logf,stderr=logf)
+			
+# 			call(['puthd','in=%s/interval'%seccalname,'value=100000'],stdout=logf,stderr=logf)
+# 			call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+# 			##call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
+# 			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=16','options=nopol,noxy'],stdout=logf,stderr=logf)
+# 			call(['gpedit','vis=%s'%seccalname,'options=phase'],stdout=logf,stderr=logf)
+# 			call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+# 			##call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
+# 			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=16','options=nopol,noxy'],stdout=logf,stderr=logf)
+# 			call(['gpedit','vis=%s'%seccalname,'options=phase'],stdout=logf,stderr=logf)
+# 			call(['gpboot','vis=%s'%seccalname,'cal=%s'%pricalname],stdout=logf,stderr=logf)
 		#if len(seccalnames) == 2:
 		#	call(['gpcopy','vis=%s'%seccalnames[0],'out=%s'%seccalnames[1],'mode=merge'],stdout=logf,stderr=logf)
 		#	seccalname = seccalnames[1]
@@ -181,31 +207,48 @@ def main(args,cfg):
 			del seccalnames[-1]
 		seccalname = seccalnames[0]
 		logprint('Using gains from %s ...'%(seccalname),logf)
-		if seccal_ext != 'NONE':
-			logprint('Transferring to extended-source secondary...',logf)
-			call(['gpcopy','vis=%s'%pricalname,'out=%s'%ext_seccalname],stdout=logf,stderr=logf)
-			call(['puthd','in=%s/interval'%ext_seccalname,'value=100000'],stdout=logf,stderr=logf)
-			call(['pgflag','vis=%s'%ext_seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
-			call(['gpcal','vis=%s'%ext_seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
-			call(['pgflag','vis=%s'%ext_seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
-			call(['gpcal','vis=%s'%ext_seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
-			call(['gpboot','vis=%s'%ext_seccalname,'cal=%s'%pricalname],stdout=logf,stderr=logf)
-			logprint('\n\n##########\nApplying calibration to extended sources...\n##########\n\n',logf)
-			for t in ext_targetnames:
-				logprint('Working on source %s'%t,logf)
-				call(['gpcopy','vis=%s'%ext_seccalname,'out=%s'%t],stdout=logf,stderr=logf)
-				call(['pgflag','vis=%s'%t,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+		# For now, we don't worry about extended sources
+# 		if seccal_ext != 'NONE':
+# 			logprint('Transferring to extended-source secondary...',logf)
+# 			call(['gpcopy','vis=%s'%pricalname,'out=%s'%ext_seccalname],stdout=logf,stderr=logf)
+# 			call(['puthd','in=%s/interval'%ext_seccalname,'value=100000'],stdout=logf,stderr=logf)
+# 			call(['pgflag','vis=%s'%ext_seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+# 			call(['gpcal','vis=%s'%ext_seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
+# 			call(['pgflag','vis=%s'%ext_seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+# 			call(['gpcal','vis=%s'%ext_seccalname,'interval=0.1','nfbin=16','options=xyvary,qusolve'],stdout=logf,stderr=logf)
+# 			call(['gpboot','vis=%s'%ext_seccalname,'cal=%s'%pricalname],stdout=logf,stderr=logf)
+# 			logprint('\n\n##########\nApplying calibration to extended sources...\n##########\n\n',logf)
+# 			for t in ext_targetnames:
+# 				logprint('Working on source %s'%t,logf)
+# 				call(['gpcopy','vis=%s'%ext_seccalname,'out=%s'%t],stdout=logf,stderr=logf)
+# 				call(['pgflag','vis=%s'%t,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
 		logprint('\n\n##########\nApplying calibration to compact sources...\n##########\n\n',logf)
 		for t in targetnames:
 			logprint('Working on source %s'%t,logf)
 			slogname = '%s.log.txt'%t
 			slogf = open(slogname,'w',1)
+			
+			# Move on to the target!
 			call(['gpcopy','vis=%s'%seccalname,'out=%s'%t],stdout=logf,stderr=logf)
-			call(['pgflag','vis=%s'%t,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+			flag(t, logf)
+# 			call(['pgflag','vis=%s'%t,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
+			
 			logprint('Writing source flag and pol info to %s'%slogname,logf)
 			call(['uvfstats','vis=%s'%t],stdout=slogf,stderr=slogf)
 			call(['uvfstats','vis=%s'%t,'mode=channel'],stdout=slogf,stderr=slogf)
 			slogf.close()
+			
+			# Apply the solutions before we do selfcal
+			t_pscal = t + '_pscal'
+			call(['uvaver', 'vis=%s'%t, 'out=%s'%t_pscal],stdout=logf,stderr=logf)
+			
+			# Phase selfcal. First round.
+			call(['invert', 'vis=%s'
+			
+			
+			
+			
+			
 	for t in sorted(unique(src_to_plot)):
 		logprint('Plotting RMSF for %s'%t,logf)
 		if int(bandfreq[0]) < 3500:
