@@ -29,6 +29,7 @@ def get_noise(img_name):
 	hdu = fits.open(img_name)
 	data = hdu[0].data[0,0]
 	rms = np.std(data)
+	hdu.close()
 	return rms
 
 # Using the SUMSS catalogue to generate regions for selfcal
