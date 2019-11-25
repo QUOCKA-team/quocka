@@ -322,7 +322,7 @@ def main(args,cfg):
 			sigma5 = 5.0*sigma
 			gen_regions(t_p0_dirty)
 			
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=100000', 'cutoff=%s,%s'(%sigma5, %sigma), 'region=@%s'%region_name], stdout=logf,stderr=logf)
+			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=100000', 'cutoff=%s,%s'%(sigma5, sigma), 'region=@%s'%region_name], stdout=logf,stderr=logf)
 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p0], stdout=logf,stderr=logf)
 			
@@ -334,7 +334,7 @@ def main(args,cfg):
 			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
 			sigma = get_noise(t_p0)
 			sigma5 = 5.0*sigma
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=100000', 'cutoff=%s,%s'(%sigma5, %sigma), 'region=@%s'%region_name], stdout=logf,stderr=logf)
+			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=100000', 'cutoff=%s,%s'%(sigma5, sigma), 'region=@%s'%region_name], stdout=logf,stderr=logf)
 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p1], stdout=logf,stderr=logf)
 			
@@ -346,7 +346,7 @@ def main(args,cfg):
 			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
 			sigma = get_noise(t_p1)
 			sigma5 = 5.0*sigma
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=100000', 'cutoff=%s,%s'(%sigma5, %sigma), 'region=@%s'%region_name], stdout=logf,stderr=logf)
+			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=100000', 'cutoff=%s,%s'%(sigma5, sigma), 'region=@%s'%region_name], stdout=logf,stderr=logf)
 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p2], stdout=logf,stderr=logf)
 			
@@ -362,7 +362,7 @@ def main(args,cfg):
 			call(['invert', 'vis=%s'%t_ascal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
 			sigma = get_noise(t_p2)
 			sigma5 = 5.0*sigma
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=100000', 'cutoff=%s,%s'(%sigma5, %sigma), "region='perc(66)'"], stdout=logf,stderr=logf)
+			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=100000', 'cutoff=%s,%s'%(sigma5, sigma), "region='perc(66)'"], stdout=logf,stderr=logf)
 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p2a1], stdout=logf,stderr=logf)
 			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
