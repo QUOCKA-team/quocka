@@ -330,7 +330,7 @@ def main(args,cfg):
 			# First round of phase selfcal.
 			t_p1 = t + '.p1.fits'
 			call(['selfcal', 'vis=%s'%t_pscal, 'model=%s'%t_model, 'interval=5', 'nfbin=4', 'options=phase,mfs'], stdout=logf,stderr=logf)
-			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
+			call(['rm -rf', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
 			
 			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
 			sigma = get_noise(t_p0)
@@ -342,7 +342,7 @@ def main(args,cfg):
 			# Second round.
 			t_p2 = t + '.p2.fits'
 			call(['selfcal', 'vis=%s'%t_pscal, 'model=%s'%t_model, 'interval=0.5', 'nfbin=4', 'options=phase,mfs'], stdout=logf,stderr=logf)
-			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
+			call(['rm -rf', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
 			
 			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
 			sigma = get_noise(t_p1)
@@ -358,7 +358,7 @@ def main(args,cfg):
 			# do the first round of amp selfcal with model generated using phase selfcal.
 			t_p2a1 = t + '.p2a1.fits'
 			call(['selfcal', 'vis=%s'%t_ascal, 'model=%s'%t_model, 'interval=5', 'nfbin=4', 'options=amp,mfs'], stdout=logf,stderr=logf)
-			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
+			call(['rm -rf', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
 			
 			call(['invert', 'vis=%s'%t_ascal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
 			sigma = get_noise(t_p2)
@@ -366,7 +366,7 @@ def main(args,cfg):
 			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=100000', 'cutoff=%s,%s'%(sigma5, sigma), "region='perc(66)'"], stdout=logf,stderr=logf)
 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p2a1], stdout=logf,stderr=logf)
-			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
+			call(['rm -rf', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
 			
 			# Looks like one round of amp selfcal is sufficient
 # 			#second round of amp selfcal
