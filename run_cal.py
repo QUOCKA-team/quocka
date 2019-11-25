@@ -303,16 +303,16 @@ def main(args,cfg):
 			slogf.close()
 			
 			# Apply the solutions before we do selfcal
-			t_pscal = t + '_pscal'
+			t_pscal = t + '.pscal'
 			call(['uvaver', 'vis=%s'%t, 'out=%s'%t_pscal],stdout=logf,stderr=logf)
 			
 			# Phase selfcal. Generate model first.
-			t_map = t + '_map'
-			t_beam = t + '_beam'
-			t_model = t + '_model'
-			t_restor = t + '_restor'
-			t_p0 = t + '_p0.fits'
-			t_p0_dirty = t + '_p0.dirty.fits'
+			t_map = t + '.map'
+			t_beam = t + '.beam'
+			t_model = t + '.model'
+			t_restor = t + '.restor'
+			t_p0 = t + '.p0.fits'
+			t_p0_dirty = t + '.p0.dirty.fits'
 			region_name = t_p0_dirty + '.region'
 			
 			# Make dirty image to estimate the noise level and generate selfcal regions
@@ -327,7 +327,7 @@ def main(args,cfg):
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p0], stdout=logf,stderr=logf)
 			
 			# First round of phase selfcal.
-			t_p1 = t + '_p1.fits'
+			t_p1 = t + '.p1.fits'
 			call(['selfcal', 'vis=%s'%t_pscal, 'model=%s'%t_model, 'interval=5', 'nfbin=4', 'options=phase,mfs'], stdout=logf,stderr=logf)
 			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
 			
@@ -339,7 +339,7 @@ def main(args,cfg):
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p1], stdout=logf,stderr=logf)
 			
 			# Second round.
-			t_p2 = t + '_p2.fits'
+			t_p2 = t + '.p2.fits'
 			call(['selfcal', 'vis=%s'%t_pscal, 'model=%s'%t_model, 'interval=0.5', 'nfbin=4', 'options=phase,mfs'], stdout=logf,stderr=logf)
 			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
 			
@@ -351,11 +351,11 @@ def main(args,cfg):
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p2], stdout=logf,stderr=logf)
 			
 			# move on to amp selfcal.
-			t_ascal = t + '_ascal'
+			t_ascal = t + '.ascal'
 			call(['uvaver', 'vis=%s'%t_pscal, 'out=%s'%t_ascal],stdout=logf,stderr=logf)
 			
 			# do the first round of amp selfcal with model generated using phase selfcal.
-			t_p2a1 = t + '_p2a1.fits'
+			t_p2a1 = t + '.p2a1.fits'
 			call(['selfcal', 'vis=%s'%t_ascal, 'model=%s'%t_model, 'interval=5', 'nfbin=4', 'options=amp,mfs'], stdout=logf,stderr=logf)
 			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
 			
