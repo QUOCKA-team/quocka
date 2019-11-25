@@ -208,13 +208,14 @@ def main(args,cfg):
 # 			call(['uvpflag','vis=%s'%source,'polt=xy,yx','pols=xx,xy,yx,yy','options=or'],stdout=logf,stderr=logf)
 # 			call(['pgflag','vis=%s'%source,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
 			
-			# First round of pgflag for all sources.
-			flag(source, logf)
+			# First round of pgflag for all sources. Maybe not for now?
+# 			flag(source, logf)
 	
 		# Flagging/calibrating the primary calibrator 1934-638. 
 		logprint('Calibration of primary cal (%s) proceeding ...'%prical,logf)
 		# Only select data above elevation=40.
 		call(['uvflag','vis=%s'%pricalname, 'select=-elevation(40,90)', 'flagval=flag'],stdout=logf,stderr=logf)
+		flag(pricalname, logf)
 		# First round of calibrating. Apply the solutions.
 		call(['mfcal','vis=%s'%pricalname,'interval=0.1,1,30'],stdout=logf,stderr=logf)
 		call([ 'gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=%d'%NFBIN, 'options=xyvary'],stdout=logf,stderr=logf)
