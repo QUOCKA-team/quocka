@@ -24,6 +24,13 @@ def flag(src, logf):
 # change nfbin to 4
 NFBIN = 4
 
+# Get the noise of an image
+def get_noise(img_name):
+	hdu = fits.open(img_name)
+	data = hdu[0].data[0,0]
+	rms = np.std(data)
+	return rms
+
 # Using the SUMSS catalogue to generate regions for selfcal
 def gen_regions(img_name):
 	header = fits.getheader(img_name)
@@ -304,7 +311,7 @@ def main(args,cfg):
 			t_model = t + '_model'
 			t_restor = t + '_restor'
 			t_p0 = t + '_p0.fits'
-			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=2048'], stdout=logf,stderr=logf)
+			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
 			# Need to adjust the cutoff according to rms.
 			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=3000', 'cutoff=0.01,0.002', "region='perc(66)'"], stdout=logf,stderr=logf)
 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
