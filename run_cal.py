@@ -60,7 +60,7 @@ def gen_regions(img_name):
 	    exit(1)
 	
 	# read the smuss table
-	smuss_file = Table.read('sumss_selfcal.fits')
+	smuss_file = Table.read('../sumss_selfcal.fits')
 	sumss_cata = SkyCoord(smuss_file['RA'], smuss_file['Dec'], unit=(u.deg, u.deg))
 
 	# find the sumss sources within the image!
