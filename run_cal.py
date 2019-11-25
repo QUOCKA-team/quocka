@@ -311,61 +311,73 @@ def main(args,cfg):
 			t_model = t + '_model'
 			t_restor = t + '_restor'
 			t_p0 = t + '_p0.fits'
+			t_p0_dirty = t + '_p0.dirty.fits'
+			region_name = t_p0_dirty + '.region'
+			
+			# Make dirty image to estimate the noise level and generate selfcal regions
 			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
-			# Need to adjust the cutoff according to rms.
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=3000', 'cutoff=0.01,0.002', "region='perc(66)'"], stdout=logf,stderr=logf)
+			call(['fits', 'op=xyout', 'in=%s'%t_map, 'out=%s'%t_p0_dirty], stdout=logf,stderr=logf)
+			sigma = get_noise(t_p0_dirty)
+			sigma5 = 5.0*sigma
+			gen_regions(t_p0_dirty)
+			
+			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=100000', 'cutoff=%s,%s'(%sigma5, %sigma), 'region=@%s'%region_name], stdout=logf,stderr=logf)
 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p0], stdout=logf,stderr=logf)
-			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor], stdout=logf,stderr=logf)
 			
 			# First round of phase selfcal.
-			# So does the clip.
 			t_p1 = t + '_p1.fits'
-			call(['selfcal', 'vis=%s'%t_pscal, 'model=%s'%t_model, 'clip=0.005', 'interval=5', 'nfbin=4', 'options=phase,mfs'], stdout=logf,stderr=logf)
-			call(['rm', '%s'%t_model], stdout=logf,stderr=logf)
-			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=2048'], stdout=logf,stderr=logf)
-			# Need to adjust the cutoff according to rms.
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=3000', 'cutoff=0.01,0.002', "region='perc(66)'"], stdout=logf,stderr=logf)
+			call(['selfcal', 'vis=%s'%t_pscal, 'model=%s'%t_model, 'interval=5', 'nfbin=4', 'options=phase,mfs'], stdout=logf,stderr=logf)
+			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
+			
+			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
+			sigma = get_noise(t_p0)
+			sigma5 = 5.0*sigma
+			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=100000', 'cutoff=%s,%s'(%sigma5, %sigma), 'region=@%s'%region_name], stdout=logf,stderr=logf)
 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p1], stdout=logf,stderr=logf)
-			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor], stdout=logf,stderr=logf)
 			
 			# Second round.
 			t_p2 = t + '_p2.fits'
-			call(['selfcal', 'vis=%s'%t_pscal, 'model=%s'%t_model, 'clip=0.005', 'interval=0.5', 'nfbin=4', 'options=phase,mfs'], stdout=logf,stderr=logf)
-			call(['rm', '%s'%t_model], stdout=logf,stderr=logf)
-			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=2048'], stdout=logf,stderr=logf)
-			# Need to adjust the cutoff according to rms.
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=3000', 'cutoff=0.01,0.002', "region='perc(66)'"], stdout=logf,stderr=logf)
+			call(['selfcal', 'vis=%s'%t_pscal, 'model=%s'%t_model, 'interval=0.5', 'nfbin=4', 'options=phase,mfs'], stdout=logf,stderr=logf)
+			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
+			
+			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
+			sigma = get_noise(t_p1)
+			sigma5 = 5.0*sigma
+			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=100000', 'cutoff=%s,%s'(%sigma5, %sigma), 'region=@%s'%region_name], stdout=logf,stderr=logf)
 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p2], stdout=logf,stderr=logf)
-			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor], stdout=logf,stderr=logf)
 			
 			# move on to amp selfcal.
 			t_ascal = t + '_ascal'
 			call(['uvaver', 'vis=%s'%t_pscal, 'out=%s'%t_ascal],stdout=logf,stderr=logf)
+			
 			# do the first round of amp selfcal with model generated using phase selfcal.
 			t_p2a1 = t + '_p2a1.fits'
-			call(['selfcal', 'vis=%s'%t_ascal, 'model=%s'%t_model, 'clip=0.005', 'interval=5', 'nfbin=4', 'options=amp,mfs'], stdout=logf,stderr=logf)
-			call(['rm', '%s'%t_model], stdout=logf,stderr=logf)
-			call(['invert', 'vis=%s'%t_ascal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=2048'], stdout=logf,stderr=logf)
-			# Need to adjust the cutoff according to rms.
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=3000', 'cutoff=0.01,0.002', "region='perc(66)'"], stdout=logf,stderr=logf)
+			call(['selfcal', 'vis=%s'%t_ascal, 'model=%s'%t_model, 'interval=5', 'nfbin=4', 'options=amp,mfs'], stdout=logf,stderr=logf)
+			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
+			
+			call(['invert', 'vis=%s'%t_ascal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
+			sigma = get_noise(t_p2)
+			sigma5 = 5.0*sigma
+			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=100000', 'cutoff=%s,%s'(%sigma5, %sigma), "region='perc(66)'"], stdout=logf,stderr=logf)
 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p2a1], stdout=logf,stderr=logf)
-			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor], stdout=logf,stderr=logf)
+			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor, '%s'%t_model], stdout=logf,stderr=logf)
 			
-			#second round of amp selfcal
-			t_p2a2 = t + '_p2a2.fits'
-			call(['selfcal', 'vis=%s'%t_ascal, 'model=%s'%t_model, 'clip=0.005', 'interval=0.5', 'nfbin=4', 'options=amp,mfs'], stdout=logf,stderr=logf)
-			call(['rm', '%s'%t_model], stdout=logf,stderr=logf)
-			call(['invert', 'vis=%s'%t_ascal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=2048'], stdout=logf,stderr=logf)
-			# Need to adjust the cutoff according to rms.
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=3000', 'cutoff=0.01,0.002', "region='perc(66)'"], stdout=logf,stderr=logf)
-			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
-			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p2a2], stdout=logf,stderr=logf)
-			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor], stdout=logf,stderr=logf)
-			call(['rm', '%s'%t_model], stdout=logf,stderr=logf)
+			# Looks like one round of amp selfcal is sufficient
+# 			#second round of amp selfcal
+# 			t_p2a2 = t + '_p2a2.fits'
+# 			call(['selfcal', 'vis=%s'%t_ascal, 'model=%s'%t_model, 'clip=0.005', 'interval=0.5', 'nfbin=4', 'options=amp,mfs'], stdout=logf,stderr=logf)
+# 			call(['rm', '%s'%t_model], stdout=logf,stderr=logf)
+# 			call(['invert', 'vis=%s'%t_ascal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=2048'], stdout=logf,stderr=logf)
+# 			# Need to adjust the cutoff according to rms.
+# 			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=3000', 'cutoff=0.01,0.002', "region='perc(66)'"], stdout=logf,stderr=logf)
+# 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
+# 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p2a2], stdout=logf,stderr=logf)
+# 			call(['rm', '%s'%t_map, '%s'%t_beam, '%s'%t_restor], stdout=logf,stderr=logf)
+# 			call(['rm', '%s'%t_model], stdout=logf,stderr=logf)
 			
 			
 	for t in sorted(unique(src_to_plot)):
