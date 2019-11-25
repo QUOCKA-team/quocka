@@ -121,7 +121,7 @@ def main(args,cfg):
 	if not os.path.exists(outdir+'/dat.uv') or rawclobber:
 		logprint('Running ATLOD...',logf)
 		if if_use > 0:
-			call(['atlod', 'in=%s'%uvlist, 'out=%s/dat.uv'%outdir, 'ifsel=%s'%if_use, 'options=birdie,noauto,xycorr,rfiflag'],stdout=logf,stderr=logf)
+			call(['atlod', 'in=%s'%uvlist, 'out=%s/dat.uv'%outdir, 'ifsel=%s'%if_use, 'options=birdie,noauto,xycorr,rfiflag,notsys'],stdout=logf,stderr=logf)
 		else:
 			call(['atlod', 'in=%s'%uvlist, 'out=%s/dat.uv'%outdir, 'options=birdie,noauto,xycorr,rfiflag'],stdout=logf,stderr=logf)
 	else:
