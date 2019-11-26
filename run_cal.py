@@ -336,8 +336,8 @@ def main(args,cfg):
 			shutil.rmtree(t_beam)
 			shutil.rmtree(t_restor)
 			shutil.rmtree(t_model)
-			shutil.rmtree(t_dirty)
-			shutil.rmtree(region_name)
+			os.remove(t_dirty)
+			os.remove(region_name)
 			
 			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
 			sigma = get_noise(t_p0)
@@ -356,8 +356,8 @@ def main(args,cfg):
 			shutil.rmtree(t_beam)
 			shutil.rmtree(t_restor)
 			shutil.rmtree(t_model)
-			shutil.rmtree(t_dirty)
-			shutil.rmtree(region_name)
+			os.remove(t_dirty)
+			os.remove(region_name)
 			
 			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
 			sigma = get_noise(t_p1)
@@ -380,8 +380,8 @@ def main(args,cfg):
 			shutil.rmtree(t_beam)
 			shutil.rmtree(t_restor)
 			shutil.rmtree(t_model)
-			shutil.rmtree(t_dirty)
-			shutil.rmtree(region_name)
+			os.remove(t_dirty)
+			os.remove(region_name)
 			
 			call(['invert', 'vis=%s'%t_ascal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
 			sigma = get_noise(t_p2)
@@ -396,8 +396,8 @@ def main(args,cfg):
 			shutil.rmtree(t_beam)
 			shutil.rmtree(t_restor)
 			shutil.rmtree(t_model)
-			shutil.rmtree(t_dirty)
-			shutil.rmtree(region_name)
+			os.remove(t_dirty)
+			os.remove(region_name)
 			
 			# Looks like one round of amp selfcal is sufficient
 # 			#second round of amp selfcal
