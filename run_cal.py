@@ -42,7 +42,7 @@ def gen_regions(img_name):
 	
 	# Since the pixel size is beam/5, we set the box size to 20 pixels in RA/Dec
 	# the crossmatch between sumss and quocka may not be perfect
-	box_radi = 10
+	box_radi = 50
 	
 	# get the ra/dec of the central point
 	cen_coor = SkyCoord(header['CRVAL1'], header['CRVAL2'], unit=(u.deg, u.deg))
@@ -321,11 +321,11 @@ def main(args,cfg):
 			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
 			call(['fits', 'op=xyout', 'in=%s'%t_map, 'out=%s'%t_dirty], stdout=logf,stderr=logf)
 			sigma = get_noise(t_dirty)
+			sigma10 = 10.0*sigma
 			sigma5 = 5.0*sigma
-			sigma2 = 2.0*sigma
 			gen_regions(t_dirty)
 			
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma5, sigma2), 'region=@%s'%region_name], stdout=logf,stderr=logf)
+			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma10, sigma5), 'region=@%s'%region_name], stdout=logf,stderr=logf)
 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p0], stdout=logf,stderr=logf)
 			
@@ -341,11 +341,11 @@ def main(args,cfg):
 			
 			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
 			sigma = get_noise(t_p0)
+			sigma10 = 10.0*sigma
 			sigma5 = 5.0*sigma
-			sigma2 = 2.0*sigma
 			call(['fits', 'op=xyout', 'in=%s'%t_map, 'out=%s'%t_dirty], stdout=logf,stderr=logf)
 			gen_regions(t_dirty)
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma5, sigma2), 'region=@%s'%region_name], stdout=logf,stderr=logf)
+			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma10, sigma5), 'region=@%s'%region_name], stdout=logf,stderr=logf)
 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p1], stdout=logf,stderr=logf)
 			
@@ -361,11 +361,11 @@ def main(args,cfg):
 			
 			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
 			sigma = get_noise(t_p1)
+			sigma10 = 10.0*sigma
 			sigma5 = 5.0*sigma
-			sigma2 = 2.0*sigma
 			call(['fits', 'op=xyout', 'in=%s'%t_map, 'out=%s'%t_dirty], stdout=logf,stderr=logf)
 			gen_regions(t_dirty)
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma5, sigma2), 'region=@%s'%region_name], stdout=logf,stderr=logf)
+			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma10, sigma5), 'region=@%s'%region_name], stdout=logf,stderr=logf)
 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p2], stdout=logf,stderr=logf)
 			
@@ -385,11 +385,11 @@ def main(args,cfg):
 			
 			call(['invert', 'vis=%s'%t_ascal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
 			sigma = get_noise(t_p2)
+			sigma10 = 10.0*sigma
 			sigma5 = 5.0*sigma
-			sigma2 = 2.0*sigma
 			call(['fits', 'op=xyout', 'in=%s'%t_map, 'out=%s'%t_dirty], stdout=logf,stderr=logf)
 			gen_regions(t_dirty)
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma5, sigma2), "region='perc(66)'"], stdout=logf,stderr=logf)
+			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma10, sigma5), "region='perc(66)'"], stdout=logf,stderr=logf)
 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p2a1], stdout=logf,stderr=logf)
 			shutil.rmtree(t_map)
