@@ -308,96 +308,96 @@ def main(args,cfg):
 			t_pscal = t + '.pscal'
 			call(['uvaver', 'vis=%s'%t, 'out=%s'%t_pscal],stdout=logf,stderr=logf)
 			
-			# Phase selfcal. Generate model first.
-			t_map = t + '.map'
-			t_beam = t + '.beam'
-			t_model = t + '.model'
-			t_restor = t + '.restor'
-			t_p0 = t + '.p0.fits'
-			t_dirty = t + '.dirty.fits'
-			region_name = t_dirty + '.region'
+# 			# Phase selfcal. Generate model first.
+# 			t_map = t + '.map'
+# 			t_beam = t + '.beam'
+# 			t_model = t + '.model'
+# 			t_restor = t + '.restor'
+# 			t_p0 = t + '.p0.fits'
+# 			t_dirty = t + '.dirty.fits'
+# 			region_name = t_dirty + '.region'
 			
-			# Make dirty image to estimate the noise level and generate selfcal regions
-			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
-			call(['fits', 'op=xyout', 'in=%s'%t_map, 'out=%s'%t_dirty], stdout=logf,stderr=logf)
-			sigma = get_noise(t_dirty)
-			sigma10 = 10.0*sigma
-			sigma5 = 5.0*sigma
-			gen_regions(t_dirty)
+# 			# Make dirty image to estimate the noise level and generate selfcal regions
+# 			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
+# 			call(['fits', 'op=xyout', 'in=%s'%t_map, 'out=%s'%t_dirty], stdout=logf,stderr=logf)
+# 			sigma = get_noise(t_dirty)
+# 			sigma10 = 10.0*sigma
+# 			sigma5 = 5.0*sigma
+# 			gen_regions(t_dirty)
 			
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma10, sigma5), 'region=@%s'%region_name], stdout=logf,stderr=logf)
-			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
-			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p0], stdout=logf,stderr=logf)
+# 			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma10, sigma5), 'region=@%s'%region_name], stdout=logf,stderr=logf)
+# 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
+# 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p0], stdout=logf,stderr=logf)
 			
-			# First round of phase selfcal.
-			t_p1 = t + '.p1.fits'
-			call(['selfcal', 'vis=%s'%t_pscal, 'model=%s'%t_model, 'interval=5', 'nfbin=4', 'options=phase,mfs'], stdout=logf,stderr=logf)
-			shutil.rmtree(t_map)
-			shutil.rmtree(t_beam)
-			shutil.rmtree(t_restor)
-			shutil.rmtree(t_model)
-			os.remove(t_dirty)
-			os.remove(region_name)
+# 			# First round of phase selfcal.
+# 			t_p1 = t + '.p1.fits'
+# 			call(['selfcal', 'vis=%s'%t_pscal, 'model=%s'%t_model, 'interval=5', 'nfbin=4', 'options=phase,mfs'], stdout=logf,stderr=logf)
+# 			shutil.rmtree(t_map)
+# 			shutil.rmtree(t_beam)
+# 			shutil.rmtree(t_restor)
+# 			shutil.rmtree(t_model)
+# 			os.remove(t_dirty)
+# 			os.remove(region_name)
 			
-			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
-			sigma = get_noise(t_p0)
-			sigma10 = 10.0*sigma
-			sigma5 = 5.0*sigma
-			call(['fits', 'op=xyout', 'in=%s'%t_map, 'out=%s'%t_dirty], stdout=logf,stderr=logf)
-			gen_regions(t_dirty)
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma10, sigma5), 'region=@%s'%region_name], stdout=logf,stderr=logf)
-			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
-			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p1], stdout=logf,stderr=logf)
+# 			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
+# 			sigma = get_noise(t_p0)
+# 			sigma10 = 10.0*sigma
+# 			sigma5 = 5.0*sigma
+# 			call(['fits', 'op=xyout', 'in=%s'%t_map, 'out=%s'%t_dirty], stdout=logf,stderr=logf)
+# 			gen_regions(t_dirty)
+# 			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma10, sigma5), 'region=@%s'%region_name], stdout=logf,stderr=logf)
+# 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
+# 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p1], stdout=logf,stderr=logf)
 			
-			# Second round.
-			t_p2 = t + '.p2.fits'
-			call(['selfcal', 'vis=%s'%t_pscal, 'model=%s'%t_model, 'interval=0.5', 'nfbin=4', 'options=phase,mfs'], stdout=logf,stderr=logf)
-			shutil.rmtree(t_map)
-			shutil.rmtree(t_beam)
-			shutil.rmtree(t_restor)
-			shutil.rmtree(t_model)
-			os.remove(t_dirty)
-			os.remove(region_name)
+# 			# Second round.
+# 			t_p2 = t + '.p2.fits'
+# 			call(['selfcal', 'vis=%s'%t_pscal, 'model=%s'%t_model, 'interval=0.5', 'nfbin=4', 'options=phase,mfs'], stdout=logf,stderr=logf)
+# 			shutil.rmtree(t_map)
+# 			shutil.rmtree(t_beam)
+# 			shutil.rmtree(t_restor)
+# 			shutil.rmtree(t_model)
+# 			os.remove(t_dirty)
+# 			os.remove(region_name)
 			
-			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
-			sigma = get_noise(t_p1)
-			sigma10 = 10.0*sigma
-			sigma5 = 5.0*sigma
-			call(['fits', 'op=xyout', 'in=%s'%t_map, 'out=%s'%t_dirty], stdout=logf,stderr=logf)
-			gen_regions(t_dirty)
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma10, sigma5), 'region=@%s'%region_name], stdout=logf,stderr=logf)
-			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
-			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p2], stdout=logf,stderr=logf)
+# 			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
+# 			sigma = get_noise(t_p1)
+# 			sigma10 = 10.0*sigma
+# 			sigma5 = 5.0*sigma
+# 			call(['fits', 'op=xyout', 'in=%s'%t_map, 'out=%s'%t_dirty], stdout=logf,stderr=logf)
+# 			gen_regions(t_dirty)
+# 			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma10, sigma5), 'region=@%s'%region_name], stdout=logf,stderr=logf)
+# 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
+# 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p2], stdout=logf,stderr=logf)
 			
-			# move on to amp selfcal.
-			t_ascal = t + '.ascal'
-			call(['uvaver', 'vis=%s'%t_pscal, 'out=%s'%t_ascal],stdout=logf,stderr=logf)
+# 			# move on to amp selfcal.
+# 			t_ascal = t + '.ascal'
+# 			call(['uvaver', 'vis=%s'%t_pscal, 'out=%s'%t_ascal],stdout=logf,stderr=logf)
 			
-			# do the first round of amp selfcal with model generated using phase selfcal.
-			t_p2a1 = t + '.p2a1.fits'
-			call(['selfcal', 'vis=%s'%t_ascal, 'model=%s'%t_model, 'interval=5', 'nfbin=4', 'options=amp,mfs'], stdout=logf,stderr=logf)
-			shutil.rmtree(t_map)
-			shutil.rmtree(t_beam)
-			shutil.rmtree(t_restor)
-			shutil.rmtree(t_model)
-			os.remove(t_dirty)
-			os.remove(region_name)
+# 			# do the first round of amp selfcal with model generated using phase selfcal.
+# 			t_p2a1 = t + '.p2a1.fits'
+# 			call(['selfcal', 'vis=%s'%t_ascal, 'model=%s'%t_model, 'interval=5', 'nfbin=4', 'options=amp,mfs'], stdout=logf,stderr=logf)
+# 			shutil.rmtree(t_map)
+# 			shutil.rmtree(t_beam)
+# 			shutil.rmtree(t_restor)
+# 			shutil.rmtree(t_model)
+# 			os.remove(t_dirty)
+# 			os.remove(region_name)
 			
-			call(['invert', 'vis=%s'%t_ascal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
-			sigma = get_noise(t_p2)
-			sigma10 = 10.0*sigma
-			sigma5 = 5.0*sigma
-			call(['fits', 'op=xyout', 'in=%s'%t_map, 'out=%s'%t_dirty], stdout=logf,stderr=logf)
-			gen_regions(t_dirty)
-			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma10, sigma5), "region='perc(66)'"], stdout=logf,stderr=logf)
-			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
-			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p2a1], stdout=logf,stderr=logf)
-			shutil.rmtree(t_map)
-			shutil.rmtree(t_beam)
-			shutil.rmtree(t_restor)
-			shutil.rmtree(t_model)
-			os.remove(t_dirty)
-			os.remove(region_name)
+# 			call(['invert', 'vis=%s'%t_ascal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
+# 			sigma = get_noise(t_p2)
+# 			sigma10 = 10.0*sigma
+# 			sigma5 = 5.0*sigma
+# 			call(['fits', 'op=xyout', 'in=%s'%t_map, 'out=%s'%t_dirty], stdout=logf,stderr=logf)
+# 			gen_regions(t_dirty)
+# 			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma10, sigma5), "region='perc(66)'"], stdout=logf,stderr=logf)
+# 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
+# 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p2a1], stdout=logf,stderr=logf)
+# 			shutil.rmtree(t_map)
+# 			shutil.rmtree(t_beam)
+# 			shutil.rmtree(t_restor)
+# 			shutil.rmtree(t_model)
+# 			os.remove(t_dirty)
+# 			os.remove(region_name)
 			
 			# Looks like one round of amp selfcal is sufficient
 # 			#second round of amp selfcal
