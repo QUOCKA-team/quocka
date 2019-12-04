@@ -308,26 +308,31 @@ def main(args,cfg):
 			t_pscal = t + '.pscal'
 			call(['uvaver', 'vis=%s'%t, 'out=%s'%t_pscal],stdout=logf,stderr=logf)
 			
-# 			# Phase selfcal. Generate model first.
-# 			t_map = t + '.map'
-# 			t_beam = t + '.beam'
-# 			t_model = t + '.model'
-# 			t_restor = t + '.restor'
-# 			t_p0 = t + '.p0.fits'
-# 			t_dirty = t + '.dirty.fits'
-# 			region_name = t_dirty + '.region'
+			# Phase selfcal. Generate model first.
+			t_map = t + '.map'
+			t_beam = t + '.beam'
+			t_model = t + '.model'
+			t_restor = t + '.restor'
+			t_p0 = t + '.p0.fits'
+			t_dirty = t + '.dirty.fits'
+			region_name = t_dirty + '.region'
 			
-# 			# Make dirty image to estimate the noise level and generate selfcal regions
-# 			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
-# 			call(['fits', 'op=xyout', 'in=%s'%t_map, 'out=%s'%t_dirty], stdout=logf,stderr=logf)
-# 			sigma = get_noise(t_dirty)
-# 			sigma10 = 10.0*sigma
-# 			sigma5 = 5.0*sigma
-# 			gen_regions(t_dirty)
+			# Generate a MFS image without selfcal.
+			call(['invert', 'vis=%s'%t_pscal, 'map=%s'%t_map, 'beam=%s'%t_beam, 'robust=0.5', 'stokes=i', 'options=mfs,double,sdb', 'imsize=3,3,beam', 'cell=5,5,res'], stdout=logf,stderr=logf)
+			call(['fits', 'op=xyout', 'in=%s'%t_map, 'out=%s'%t_dirty], stdout=logf,stderr=logf)
+			sigma = get_noise(t_dirty)
+			sigma10 = 10.0*sigma
+			sigma5 = 5.0*sigma
 			
-# 			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma10, sigma5), 'region=@%s'%region_name], stdout=logf,stderr=logf)
-# 			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
-# 			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p0], stdout=logf,stderr=logf)
+			call(['mfclean', 'map=%s'%t_map, 'beam=%s'%t_beam, 'out=%s'%t_model, 'niters=10000', 'cutoff=%s,%s'%(sigma10, sigma5), "region='perc(90)'"], stdout=logf,stderr=logf)
+			call(['restor', 'map=%s'%t_map, 'beam=%s'%t_beam, 'model=%s'%t_model, 'out=%s'%t_restor], stdout=logf,stderr=logf)
+			call(['fits', 'op=xyout', 'in=%s'%t_restor, 'out=%s'%t_p0], stdout=logf,stderr=logf)
+			
+			shutil.rmtree(t_map)
+			shutil.rmtree(t_beam)
+			shutil.rmtree(t_restor)
+			shutil.rmtree(t_model)
+			os.remove(t_dirty)
 			
 # 			# First round of phase selfcal.
 # 			t_p1 = t + '.p1.fits'
