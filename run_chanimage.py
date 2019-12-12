@@ -23,24 +23,32 @@ for vis in vislist:
     freqband = vis.split('.')[-1]
     if freqband == '2100':
 	selstring = ''
-    else:
+	imsize = 500
+    elif freqband == '5500':
 	selstring = 'select=-ant(6)'
+	imsize = 1200
+    elif freqband == '7500':
+	selstring = 'select=-ant(6)'
+	imsize = 1600
+    else:
+	print 'Which frequency is this?'
+	exit(1)
 
     call(['invert','vis=%s.%s'%(sourcename,freqband),
                 'map=%s.d.%s.mfs.i'%(sourcename,freqband),
                 'beam=%s.beam.%s.mfs'%(sourcename,freqband),
-                'imsize=1024','cell=1','robust=0.5','stokes=i',selstring,
-                'options=mfs,double'],
+                'imsize=%s'%(imsize),'cell=5,5,res','robust=0.5','stokes=i',selstring,
+                'options=mfs,double,sdb'],
                 stdin=None, stdout=None, stderr=None, shell=False)
     call(['fits','op=xyout','in=%s.d.%s.mfs.i'%(sourcename,freqband),'out=%s.d.%s.mfs.i.fits'%(sourcename,freqband)],
 		stdin=None, stdout=None, stderr=None, shell=False)
     imnoise = getnoise('%s.d.%s.mfs.i.fits'%(sourcename,freqband))
     # XZ: print the image noise, and try changing the cutoff level
-    print 'Image noise is:', imnoise
-    call(['clean','map=%s.d.%s.mfs.i'%(sourcename,freqband),
+#     print 'Image noise is:', imnoise
+    call(['mfclean','map=%s.d.%s.mfs.i'%(sourcename,freqband),
                                 'beam=%s.beam.%s.mfs'%(sourcename,freqband),
                                 'out=%s.model.%s.mfs'%(sourcename,freqband),
-                                'cutoff=%f'%(4.*imnoise),'niters=100000'],
+                                'cutoff=%f'%(5.*imnoise),'niters=10000', "region='perc(90)'"],
                                 stdin=None, stdout=None, stderr=None, shell=False)
     call(['restor','map=%s.d.%s.mfs.i'%(sourcename,freqband),
                                 'beam=%s.beam.%s.mfs'%(sourcename,freqband),
@@ -58,14 +66,14 @@ for vis in vislist:
     call(['rm','-rf','%s.beam.%s.mfs'%(sourcename,freqband)])
     call(['rm','-rf','%s.model.%s.mfs'%(sourcename,freqband)])
     call(['rm','-rf','%s.restor.%s.mfs'%(sourcename,freqband)])
-    call(['rm','-rf','%s.restor.%s.mfs.fits'%(sourcename,freqband)])
+#     call(['rm','-rf','%s.restor.%s.mfs.fits'%(sourcename,freqband)])
 
     for i in range(1,2049,10):
     #for i in range(1,128,10):  # XZ: add stokes V images
 	call(['invert','vis=%s.%s'%(sourcename,freqband),
 		'map=%s.d.%s.%04d.i'%(sourcename,freqband,i)+',%s.d.%s.%04d.q'%(sourcename,freqband,i)+ ',%s.d.%s.%04d.u'%(sourcename,freqband,i)+ ',%s.d.%s.%04d.v'%(sourcename,freqband,i),
 		'beam=%s.beam.%s.%04d'%(sourcename,freqband,i),
-		'imsize=1024','cell=1','robust=0.5','stokes=i,q,u,v',selstring,
+		'imsize=%s'%(imsize),'cell=5,5,res','robust=0.5','stokes=i,q,u,v',selstring,
 		'options=mfs,double','line=chan,10,'+str(i)],
 		stdin=None, stdout=None, stderr=None, shell=False)
 
