@@ -23,13 +23,13 @@ for vis in vislist:
     freqband = vis.split('.')[-1]
     if freqband == '2100':
 	selstring = ''
-	imsize = 500
+# 	imsize = 500
     elif freqband == '5500':
 	selstring = 'select=-ant(6)'
-	imsize = 1200
+# 	imsize = 1200
     elif freqband == '7500':
 	selstring = 'select=-ant(6)'
-	imsize = 1600
+# 	imsize = 1600
     else:
 	print 'Which frequency is this?'
 	exit(1)
@@ -37,7 +37,7 @@ for vis in vislist:
     call(['invert','vis=%s.%s'%(sourcename,freqband),
                 'map=%s.d.%s.mfs.i'%(sourcename,freqband),
                 'beam=%s.beam.%s.mfs'%(sourcename,freqband),
-                'imsize=%s'%(imsize),'cell=5,5,res','robust=0.5','stokes=i',selstring,
+                'imsize=1024','cell=1','robust=0.5','stokes=i',selstring,
                 'options=mfs,double,sdb'],
                 stdin=None, stdout=None, stderr=None, shell=False)
     call(['fits','op=xyout','in=%s.d.%s.mfs.i'%(sourcename,freqband),'out=%s.d.%s.mfs.i.fits'%(sourcename,freqband)],
@@ -73,7 +73,7 @@ for vis in vislist:
 	call(['invert','vis=%s.%s'%(sourcename,freqband),
 		'map=%s.d.%s.%04d.i'%(sourcename,freqband,i)+',%s.d.%s.%04d.q'%(sourcename,freqband,i)+ ',%s.d.%s.%04d.u'%(sourcename,freqband,i)+ ',%s.d.%s.%04d.v'%(sourcename,freqband,i),
 		'beam=%s.beam.%s.%04d'%(sourcename,freqband,i),
-		'imsize=%s'%(imsize),'cell=5,5,res','robust=0.5','stokes=i,q,u,v',selstring,
+		'imsize=1024','cell=1','robust=0.5','stokes=i,q,u,v',selstring,
 		'options=mfs,double','line=chan,10,'+str(i)],
 		stdin=None, stdout=None, stderr=None, shell=False)
 
