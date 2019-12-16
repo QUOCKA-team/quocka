@@ -240,7 +240,7 @@ def main(args,cfg):
 		# Move on to the secondary calibrator
 		for seccalname in seccalnames:
 			logprint('Transferring to compact-source secondary %s...'%seccalname,logf)
-			call(['gpcopy','vis=%s'%pricalname_c2,'out=%s'%seccalname, 'mode=merge'],stdout=logf,stderr=logf)
+			call(['gpcopy','vis=%s'%pricalname_c2,'out=%s'%seccalname],stdout=logf,stderr=logf)
 			# flag twice, gpcal twice
 			flag(seccalname, logf)
 			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=%d'%NFBIN,'options=xyvary,qusolve'],stdout=logf,stderr=logf)
