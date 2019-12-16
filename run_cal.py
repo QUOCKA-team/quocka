@@ -245,8 +245,10 @@ def main(args,cfg):
 			# flag twice, gpcal twice
 			flag(seccalname, logf)
 			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=%d'%NFBIN,'options=xyvary,qusolve'],stdout=logf,stderr=logf)
+			call(['gpedit','vis=%s'%seccalname,'options=phase'],stdout=logf,stderr=logf)
 			flag(seccalname, logf)
 			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=%d'%NFBIN,'options=xyvary,qusolve'],stdout=logf,stderr=logf)
+			call(['gpedit','vis=%s'%seccalname,'options=phase'],stdout=logf,stderr=logf)
 			# boot the flux
 			call(['gpboot','vis=%s'%seccalname,'cal=%s'%pricalname_c2],stdout=logf,stderr=logf)
 			
