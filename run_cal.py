@@ -241,6 +241,7 @@ def main(args,cfg):
 		for seccalname in seccalnames:
 			logprint('Transferring to compact-source secondary %s...'%seccalname,logf)
 			call(['gpcopy','vis=%s'%pricalname_c2,'out=%s'%seccalname],stdout=logf,stderr=logf)
+			call(['puthd','in=%s/interval'%seccalname,'value=100000'],stdout=logf,stderr=logf)
 			# flag twice, gpcal twice
 			flag(seccalname, logf)
 			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=%d'%NFBIN,'options=xyvary,qusolve'],stdout=logf,stderr=logf)
