@@ -250,7 +250,7 @@ def main(args,cfg):
 			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=%d'%NFBIN,'options=xyvary,qusolve'],stdout=logf,stderr=logf)
 			call(['gpedit','vis=%s'%seccalname,'options=phase'],stdout=logf,stderr=logf)
 			# boot the flux
-			call(['gpboot','vis=%s'%seccalname,'cal=%s'%pricalname_c2],stdout=logf,stderr=logf)
+			call(['gpboot','vis=%s'%seccalname,'cal=%s'%pricalname_c1],stdout=logf,stderr=logf)
 			
 # 			call(['puthd','in=%s/interval'%seccalname,'value=100000'],stdout=logf,stderr=logf)
 # 			call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
