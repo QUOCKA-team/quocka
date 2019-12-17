@@ -216,18 +216,20 @@ def main(args,cfg):
 		logprint('Calibration of primary cal (%s) proceeding ...'%prical,logf)
 		# Only select data above elevation=40.
 		call(['uvflag','vis=%s'%pricalname, 'select=-elevation(40,90)', 'flagval=flag'],stdout=logf,stderr=logf)
-		flag(pricalname, logf)
 		# First round of calibrating. Apply the solutions.
+		flag(pricalname, logf)
+		call(['mfcal','vis=%s'%pricalname,'interval=0.1,1,30'],stdout=logf,stderr=logf)
+		flag(pricalname, logf)
 		call(['mfcal','vis=%s'%pricalname,'interval=0.1,1,30'],stdout=logf,stderr=logf)
 		call([ 'gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=%d'%NFBIN, 'options=xyvary'],stdout=logf,stderr=logf)
-		pricalname_c1 = pricalname + '_c1'
-		call(['uvaver', 'vis=%s'%pricalname, 'out=%s'%pricalname_c1],stdout=logf,stderr=logf)
+# 		pricalname_c1 = pricalname + '_c1'
+# 		call(['uvaver', 'vis=%s'%pricalname, 'out=%s'%pricalname_c1],stdout=logf,stderr=logf)
 		
 		# Second round of flagging/calibrating
 		
-		flag(pricalname_c1, logf)
-		call(['mfcal','vis=%s'%pricalname_c1,'interval=0.1,1,30'],stdout=logf,stderr=logf)
-		call(['gpcal', 'vis=%s'%pricalname_c1, 'interval=0.1', 'nfbin=%d'%NFBIN, 'options=xyvary'],stdout=logf,stderr=logf)
+# 		flag(pricalname, logf)
+# 		call(['mfcal','vis=%s'%pricalname_c1,'interval=0.1,1,30'],stdout=logf,stderr=logf)
+# 		call(['gpcal', 'vis=%s'%pricalname_c1, 'interval=0.1', 'nfbin=%d'%NFBIN, 'options=xyvary'],stdout=logf,stderr=logf)
 # 		pricalname_c2 = pricalname + '_c2'
 # 		call(['uvaver', 'vis=%s'%pricalname_c1, 'out=%s'%pricalname_c2],stdout=logf,stderr=logf)
 		
@@ -240,17 +242,17 @@ def main(args,cfg):
 		# Move on to the secondary calibrator
 		for seccalname in seccalnames:
 			logprint('Transferring to compact-source secondary %s...'%seccalname,logf)
-			call(['gpcopy','vis=%s'%pricalname_c1,'out=%s'%seccalname],stdout=logf,stderr=logf)
+			call(['gpcopy','vis=%s'%pricalname,'out=%s'%seccalname],stdout=logf,stderr=logf)
 # 			call(['puthd','in=%s/interval'%seccalname,'value=100000'],stdout=logf,stderr=logf)
 			# flag twice, gpcal twice
 			flag(seccalname, logf)
 			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=%d'%NFBIN,'options=xyvary,qusolve'],stdout=logf,stderr=logf)
 # 			call(['gpedit','vis=%s'%seccalname,'options=phase'],stdout=logf,stderr=logf)
-			flag(seccalname, logf)
-			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=%d'%NFBIN,'options=xyvary,qusolve'],stdout=logf,stderr=logf)
+# 			flag(seccalname, logf)
+# 			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=%d'%NFBIN,'options=xyvary,qusolve'],stdout=logf,stderr=logf)
 # 			call(['gpedit','vis=%s'%seccalname,'options=phase'],stdout=logf,stderr=logf)
 			# boot the flux
-			call(['gpboot','vis=%s'%seccalname,'cal=%s'%pricalname_c1],stdout=logf,stderr=logf)
+			call(['gpboot','vis=%s'%seccalname,'cal=%s'%pricalname],stdout=logf,stderr=logf)
 			
 # 			call(['puthd','in=%s/interval'%seccalname,'value=100000'],stdout=logf,stderr=logf)
 # 			call(['pgflag','vis=%s'%seccalname,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
