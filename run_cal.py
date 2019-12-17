@@ -225,7 +225,7 @@ def main(args,cfg):
 		
 		# Second round of flagging/calibrating
 		
-		flag(pricalname_c1, logf)
+		flag(pricalname, logf)
 		call(['mfcal','vis=%s'%pricalname,'interval=0.1,1,30'],stdout=logf,stderr=logf)
 		call([ 'gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=%d'%NFBIN, 'options=xyvary'],stdout=logf,stderr=logf)
 		pricalname_c2 = pricalname + '_c2'
