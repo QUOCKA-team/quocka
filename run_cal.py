@@ -22,8 +22,12 @@ def flag(src, logf):
 	call(['pgflag','vis=%s'%src,'stokes=i,v,u,q','flagpar=8,2,2,3,6,3','command=<b','options=nodisp'],stdout=logf,stderr=logf)
 	call(['pgflag','vis=%s'%src,'stokes=i,v,q,u','flagpar=8,2,2,3,6,3','command=<b','options=nodisp'],stdout=logf,stderr=logf)
 
-# change nfbin to 4
-NFBIN = 4
+# pgflagging, stokes V only.
+def flag_v(src, logf):
+	call(['pgflag','vis=%s'%src,'stokes=i,q,u,v','flagpar=8,5,5,3,6,3','command=<b','options=nodisp'],stdout=logf,stderr=logf)
+	
+# change nfbin to 2
+NFBIN = 2
 
 # Get the noise of an image
 def get_noise(img_name):
@@ -216,12 +220,12 @@ def main(args,cfg):
 		logprint('Calibration of primary cal (%s) proceeding ...'%prical,logf)
 		# Only select data above elevation=40.
 		call(['uvflag','vis=%s'%pricalname, 'select=-elevation(40,90)', 'flagval=flag'],stdout=logf,stderr=logf)
-		# First round of calibrating. Apply the solutions.
-		flag(pricalname, logf)
+		flag_v(pricalname, logf)
 		call(['mfcal','vis=%s'%pricalname,'interval=0.1,1,30'],stdout=logf,stderr=logf)
 		flag(pricalname, logf)
-		call(['mfcal','vis=%s'%pricalname,'interval=0.1,1,30'],stdout=logf,stderr=logf)
-		call([ 'gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=%d'%NFBIN, 'options=xyvary'],stdout=logf,stderr=logf)
+		call(['gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=%d'%NFBIN, 'options=xyvary'],stdout=logf,stderr=logf)
+		flag(pricalname, logf)
+
 # 		pricalname_c1 = pricalname + '_c1'
 # 		call(['uvaver', 'vis=%s'%pricalname, 'out=%s'%pricalname_c1],stdout=logf,stderr=logf)
 		
@@ -247,6 +251,7 @@ def main(args,cfg):
 			# flag twice, gpcal twice
 			flag(seccalname, logf)
 			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=%d'%NFBIN,'options=xyvary,qusolve'],stdout=logf,stderr=logf)
+			flag(seccalname, logf)
 # 			call(['gpedit','vis=%s'%seccalname,'options=phase'],stdout=logf,stderr=logf)
 # 			flag(seccalname, logf)
 # 			call(['gpcal','vis=%s'%seccalname,'interval=0.1','nfbin=%d'%NFBIN,'options=xyvary,qusolve'],stdout=logf,stderr=logf)
@@ -301,6 +306,7 @@ def main(args,cfg):
 			
 			# Move on to the target!
 			call(['gpcopy','vis=%s'%seccalname,'out=%s'%t],stdout=logf,stderr=logf)
+			flag(t, logf)
 			flag(t, logf)
 # 			call(['pgflag','vis=%s'%t,'stokes=v','flagpar=7,4,12,3,5,3,20','command=<be','options=nodisp'],stdout=logf,stderr=logf)
 			
