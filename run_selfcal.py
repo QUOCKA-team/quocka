@@ -16,15 +16,17 @@ def logprint(s2p,lf):
 	print >>lf, s2p
 	print s2p
 
-# Get the noise and peak flux of an image
+# Get the rms and peak flux of an image. RMS is estimated using a clipped version of the image data.
 def get_noise(img_name):
 	hdu = fits.open(img_name)
 	data = hdu[0].data[0,0]
-	dimen = data.shape
-	mask = np.ones(dimen)
-	mask[int(dimen[0]/2)-200:int(dimen[0]/2)+200, int(dimen[1]/2)-200:int(dimen[1]/2)+200] = 0
-	mask = mask.astype(bool)
-	rms = np.std(data[mask])
+# 	dimen = data.shape
+# 	mask = np.ones(dimen)
+# 	mask[int(dimen[0]/2)-200:int(dimen[0]/2)+200, int(dimen[1]/2)-200:int(dimen[1]/2)+200] = 0
+# 	mask = mask.astype(bool)
+# 	rms = np.std(data[mask])
+	rms_initial = np.std(data)
+	rms = np.std(data[data<2.5*rms_initial])
 	peak = np.amax(data)
 	hdu.close()
 	return rms,peak
