@@ -37,55 +37,55 @@ def get_noise(img_name):
 	hdu.close()
 	return rms
 
-# Using the SUMSS catalogue to generate regions for selfcal
-def gen_regions(img_name):
-	header = fits.getheader(img_name)
-	w = WCS(header).dropaxis(3).dropaxis(2)
-	size_x = header['NAXIS1']
-	size_y = header['NAXIS2']
+# Using the SUMSS catalogue to generate regions for selfcal. This part is obsolete.
+# def gen_regions(img_name):
+# 	header = fits.getheader(img_name)
+# 	w = WCS(header).dropaxis(3).dropaxis(2)
+# 	size_x = header['NAXIS1']
+# 	size_y = header['NAXIS2']
 	
-	# Since the pixel size is beam/5, we set the box size to 20 pixels in RA/Dec
-	# the crossmatch between sumss and quocka may not be perfect
-	box_radi = 50
+# 	# Since the pixel size is beam/5, we set the box size to 20 pixels in RA/Dec
+# 	# the crossmatch between sumss and quocka may not be perfect
+# 	box_radi = 50
 	
-	# get the ra/dec of the central point
-	cen_coor = SkyCoord(header['CRVAL1'], header['CRVAL2'], unit=(u.deg, u.deg))
+# 	# get the ra/dec of the central point
+# 	cen_coor = SkyCoord(header['CRVAL1'], header['CRVAL2'], unit=(u.deg, u.deg))
 	
-	# and the image radius in degrees (to decide which smuss sources are within the image). 
-	# Since we always use 3,3,beam, so the image size is only dependent on the frequency.
-	freqband = img_name.split('.')[1]
-	if freqband == '2100':
-	    img_radi = 0.753572
-	elif freqband == '5500':
-	    img_radi = 0.312265
-	elif freqband == '7500':
-	    img_radi = 0.239143
-	else:
-	    print("Which frequency band is this?\n")
-	    exit(1)
+# 	# and the image radius in degrees (to decide which smuss sources are within the image). 
+# 	# Since we always use 3,3,beam, so the image size is only dependent on the frequency.
+# 	freqband = img_name.split('.')[1]
+# 	if freqband == '2100':
+# 	    img_radi = 0.753572
+# 	elif freqband == '5500':
+# 	    img_radi = 0.312265
+# 	elif freqband == '7500':
+# 	    img_radi = 0.239143
+# 	else:
+# 	    print("Which frequency band is this?\n")
+# 	    exit(1)
 	
-	# read the smuss table
-	smuss_file = Table.read('../sumss_selfcal.fits')
-	sumss_cata = SkyCoord(smuss_file['RA'], smuss_file['Dec'], unit=(u.deg, u.deg))
+# 	# read the smuss table
+# 	smuss_file = Table.read('../sumss_selfcal.fits')
+# 	sumss_cata = SkyCoord(smuss_file['RA'], smuss_file['Dec'], unit=(u.deg, u.deg))
 
-	# find the sumss sources within the image!
-	sources = sumss_cata[sumss_cata.separation(cen_coor)<img_radi*u.deg]
+# 	# find the sumss sources within the image!
+# 	sources = sumss_cata[sumss_cata.separation(cen_coor)<img_radi*u.deg]
 	
-	# source positions in pixels
-	pix = w.wcs_world2pix(sources.ra, sources.dec, 0)
+# 	# source positions in pixels
+# 	pix = w.wcs_world2pix(sources.ra, sources.dec, 0)
 	
-	# Make sure all the boxes are within the image!
-	box_in_img = np.all([pix[0]>box_radi,pix[1]>box_radi, size_x-pix[0]>box_radi, size_y-pix[1]>box_radi], axis=0)
-	pix = [pix[0][box_in_img],pix[1][box_in_img]]
-	boxes = np.column_stack((pix[0]-box_radi, pix[1]-box_radi, pix[0]+box_radi, pix[1]+box_radi))
+# 	# Make sure all the boxes are within the image!
+# 	box_in_img = np.all([pix[0]>box_radi,pix[1]>box_radi, size_x-pix[0]>box_radi, size_y-pix[1]>box_radi], axis=0)
+# 	pix = [pix[0][box_in_img],pix[1][box_in_img]]
+# 	boxes = np.column_stack((pix[0]-box_radi, pix[1]-box_radi, pix[0]+box_radi, pix[1]+box_radi))
 	
-	# write the boxes to the region file!
-	boxes_str = boxes.astype(str)
-	boxes_lines = []
-	for i in range(0,len(boxes[:,0])):
-	    boxes_lines.append('boxes('+','.join(boxes_str[i,:])+')')
+# 	# write the boxes to the region file!
+# 	boxes_str = boxes.astype(str)
+# 	boxes_lines = []
+# 	for i in range(0,len(boxes[:,0])):
+# 	    boxes_lines.append('boxes('+','.join(boxes_str[i,:])+')')
 
-	np.savetxt(img_name+'.region', boxes_lines, fmt='%s')
+# 	np.savetxt(img_name+'.region', boxes_lines, fmt='%s')
 	
 def main(args,cfg):
 	# Initiate log file with options used
@@ -221,10 +221,16 @@ def main(args,cfg):
 		# Only select data above elevation=40.
 		call(['uvflag','vis=%s'%pricalname, 'select=-elevation(40,90)', 'flagval=flag'],stdout=logf,stderr=logf)
 		flag_v(pricalname, logf)
-		call(['mfcal','vis=%s'%pricalname,'interval=0.1,1,30'],stdout=logf,stderr=logf)
+		# XZ: this part is modified to fix the "no 1934" issue on 2019-06-23. Comment the following three lines if used otherwise.
+		if pricalname=='2052-474.2100':
+			call(['mfcal','vis=%s'%pricalname,'flux=1.6025794,2.211,-0.3699236','interval=0.1,1,30'],stdout=logf,stderr=logf)
+		else:
+			call(['mfcal','vis=%s'%pricalname,'interval=0.1,1,30'],stdout=logf,stderr=logf)
 		flag(pricalname, logf)
 		call(['gpcal', 'vis=%s'%pricalname, 'interval=0.1', 'nfbin=%d'%NFBIN, 'options=xyvary'],stdout=logf,stderr=logf)
 		flag(pricalname, logf)
+		if pricalname=='2052-474.2100':
+			call(['mfboot','vis=%s'%pricalname,'flux=1.6025794,2.211,-0.3699236'],stdout=logf,stderr=logf)
 
 # 		pricalname_c1 = pricalname + '_c1'
 # 		call(['uvaver', 'vis=%s'%pricalname, 'out=%s'%pricalname_c1],stdout=logf,stderr=logf)
