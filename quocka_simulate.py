@@ -181,26 +181,57 @@ class SimulatedSource:
         chi0 *= np.pi/180.
         print('Intrinsic pol angle is',chi0,'rad')
         print('Faraday depth is',R,'rad/m2')
-        print('Additional RM is',rm,'rad/m2')
-        pvals = pfrac*self.data['I']*np.sin(R*self.data['lamsq'])/(R*self.data['lamsq'])*np.exp(2.j*(chi0+0.5*R*self.data['lamsq']+rm*self.data['lamsq']))
+        # print('Additional RM is',rm,'rad/m2')
+        print('Effective RM is',rm,'rad/m2')
+        # pvals = pfrac*self.data['I']*np.sin(R*self.data['lamsq'])/(R*self.data['lamsq'])*np.exp(2.j*(chi0+0.5*R*self.data['lamsq']+rm*self.data['lamsq']))
+        pvals = pfrac*self.data['I']*np.sin(R*self.data['lamsq'])/(R*self.data['lamsq'])*np.exp(2.j*(chi0+rm*self.data['lamsq']))
         self.data['Q'] += np.real(pvals)
         self.data['U'] += np.imag(pvals)
         self.model['QU']['QU%d'%(self.nmodels[1])] = ['dfr', pfrac, R, rm, chi0]
         self.nmodels[1] += 1
 
-    def add_ifd(self, pfrac, R, rm, chi0, srm):
+    def add_ext(self, pfrac, sig, rm, chi0):
+        print('Polarization fraction is',pfrac)
+        print('Intrinsic pol angle is',chi0,'deg')
+        chi0 *= np.pi/180.
+        print('Intrinsic pol angle is',chi0,'rad')
+        print('Dispersion in rm is',sig,'rad/m2')
+        # print('Additional RM is',rm,'rad/m2')
+        print('Effective RM is',rm,'rad/m2')
+        pvals = pfrac*self.data['I']*np.exp(-2.*sig**2*self.data['lamsq']**2)*np.exp(2.j*(chi0+rm*self.data['lamsq']))
+        self.data['Q'] += np.real(pvals)
+        self.data['U'] += np.imag(pvals)
+        self.model['QU']['QU%d'%(self.nmodels[1])] = ['ext', pfrac, sig, rm, chi0]
+        self.nmodels[1] += 1
+
+    def add_mix(self, pfrac, R, sig, rm, chi0):
         print('Polarization fraction is',pfrac)
         print('Intrinsic pol angle is',chi0,'deg')
         chi0 *= np.pi/180.
         print('Intrinsic pol angle is',chi0,'rad')
         print('Faraday depth is',R,'rad/m2')
-        print('Additional RM is',rm,'rad/m2')
-        print('Internal Faraday dispersion is',srm,'rad/m2')
-        pvals = pfrac*self.data['I']*np.exp(2.j*(chi0+rm*self.data['lamsq']))*((1.-np.exp(2.j*R*self.data['lamsq']-2.*srm**2*self.data['lamsq']**2))/(2.*srm**2*self.data['lamsq']**2-2.j*R*self.data['lamsq']))
+        print('Dispersion in rm is',sig,'rad/m2')
+        # print('Additional RM is',rm,'rad/m2')
+        print('Effective RM is',rm,'rad/m2')
+        pvals = pfrac*self.data['I']*np.sin(R*self.data['lamsq'])/(R*self.data['lamsq'])*np.exp(-2.*sig**2*self.data['lamsq']**2)*np.exp(2.j*(chi0+rm*self.data['lamsq']))
         self.data['Q'] += np.real(pvals)
         self.data['U'] += np.imag(pvals)
-        self.model['QU']['QU%d'%(self.nmodels[1])] = ['ifd', pfrac, R, rm, chi0, srm]
+        self.model['QU']['QU%d'%(self.nmodels[1])] = ['mix', pfrac, R, sig, rm, chi0]
         self.nmodels[1] += 1
+
+    # def add_ifd(self, pfrac, R, rm, chi0, srm):
+    #     print('Polarization fraction is',pfrac)
+    #     print('Intrinsic pol angle is',chi0,'deg')
+    #     chi0 *= np.pi/180.
+    #     print('Intrinsic pol angle is',chi0,'rad')
+    #     print('Faraday depth is',R,'rad/m2')
+    #     print('Additional RM is',rm,'rad/m2')
+    #     print('Internal Faraday dispersion is',srm,'rad/m2')
+    #     pvals = pfrac*self.data['I']*np.exp(2.j*(chi0+rm*self.data['lamsq']))*((1.-np.exp(2.j*R*self.data['lamsq']-2.*srm**2*self.data['lamsq']**2))/(2.*srm**2*self.data['lamsq']**2-2.j*R*self.data['lamsq']))
+    #     self.data['Q'] += np.real(pvals)
+    #     self.data['U'] += np.imag(pvals)
+    #     self.model['QU']['QU%d'%(self.nmodels[1])] = ['ifd', pfrac, R, rm, chi0, srm]
+    #     self.nmodels[1] += 1
 
     def generate_model_fdf(self, phi):
         model_fdf = np.zeros(phi.shape, dtype=np.complex)
@@ -235,7 +266,8 @@ class SimulatedSource:
                 if rm > np.max(phi) or (rm+R) < np.min(phi):
                     print('Warning: Selected RM out of range!')
                 else:
-                    ind = np.where(np.logical_and(phi<=(rm+R),phi>=rm))
+                    # ind = np.where(np.logical_and(phi<=(rm+R),phi>=rm))
+                    ind = np.where(np.logical_and(phi<=(rm+0.5*R),phi>=rm-0.5*R))
                     model_fdf[ind] += (pfrac*np.exp(1.j*chi0))
             elif qumodel[0] == 'ifd':
                 # make the complicated IFD spectrum
