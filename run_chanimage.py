@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
-# Script to generate channel images from calibrated miriad data
-# First version by Philippa Patterson, 10 December 2018
-# Updated by GH and PP 10 December 2018
+'''
+Script to generate channel images from calibrated miriad data
+First version by Philippa Patterson, 10 December 2018
+Updated by GH and PP 10 December 2018
+'''
 
 import sys
-import pyfits
 import argparse
 import configparser
 import glob
