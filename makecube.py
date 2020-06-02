@@ -7,6 +7,7 @@ from astropy.convolution import convolve, convolve_fft, Gaussian2DKernel
 import timeit
 import pdb
 
+
 def list_files(directory, extension):
     '''
     Find all files with given extension.
@@ -21,7 +22,7 @@ def readfiles(datadir):
     Split by Stokes.
     '''
     print('Getting data -- Splitting by Stokes...')
-    files = list_files(datadir,'fits')
+    files = list_files(datadir, 'fits')
     filelist = []
     chanlist = []
     freqlist = []
@@ -35,9 +36,9 @@ def readfiles(datadir):
         chanlist.append(int(chan))
         stok = f[20]
         stoklist.append(stok)
-        #print str(f)
-        #print freq
-        #print chan
+        # print str(f)
+        # print freq
+        # print chan
     stoklist = np.array(stoklist)
     filelist = np.array(filelist)
     freqlist = np.array(freqlist)
@@ -56,6 +57,7 @@ def readfiles(datadir):
     ulist = filelist[ucond]
     return source, ilist, qlist, ulist
 
+
 def getfreq(datadir, datalist):
     '''
     Get frequencies from headers.
@@ -65,22 +67,22 @@ def getfreq(datadir, datalist):
     ilist, qlist, ulist = datalist
     freqi = []
     for f in ilist:
-        #print datadir + f
+        # print datadir + f
         hdulist = fits.open(datadir + f)
         hdu = hdulist[0]
         data = hdu.data
-        #print data.shape
+        # print data.shape
         head = hdu.header
         hdulist.close()
         freq = head['CRVAL3']
         freqi.append(freq)
     freqq = []
     for f in qlist:
-        #print datadir + f
+        # print datadir + f
         hdulist = fits.open(datadir + f)
         hdu = hdulist[0]
         data = hdu.data
-        #print data.shape
+        # print data.shape
         head = hdu.header
         hdulist.close()
         freq = head['CRVAL3']
@@ -88,11 +90,11 @@ def getfreq(datadir, datalist):
 
     frequ = []
     for f in ulist:
-        #print datadir + f
+        # print datadir + f
         hdulist = fits.open(datadir + f)
         hdu = hdulist[0]
         data = hdu.data
-        #print data.shape
+        # print data.shape
         head = hdu.header
         hdulist.close()
         freq = head['CRVAL3']
@@ -106,8 +108,9 @@ def getfreq(datadir, datalist):
 
     frequ = np.array(frequ)
     frequ, sortlistu = list(zip(*sorted(zip(frequ, ulist))))
-    #print freqlist
+    # print freqlist
     return freqi, [sortlisti, sortlistq, sortlistu]
+
 
 def getbigframe(datadir, sortlist):
     '''
@@ -118,7 +121,7 @@ def getbigframe(datadir, sortlist):
     FWHM_list = []
     freqlist = []
     for f in sortlist:
-        #print datadir + f
+        # print datadir + f
         hdulist = fits.open(datadir + f)
         hdu = hdulist[0]
         head = hdu.header
@@ -145,28 +148,29 @@ def getbigframe(datadir, sortlist):
     bighdu = fits.open(bigfile)[0]
     bighead = bighdu.header
     freq_r = bighead['CRVAL3']
-    hpbw_r = bighead['BMAJ']*60 # In arcmin now
+    hpbw_r = bighead['BMAJ']*60  # In arcmin now
     hpbw_n = np.round(hpbw_r, decimals=3)
     return hpbw_r, freq_r, hpbw_n
 
+
 def smoothloop(args):
-    #pdb.set_trace()
+    # pdb.set_trace()
     hpbw_r, freq_r, hpbw_n, datadir, sortlist, i = \
         args[0], args[1], args[2], args[3], args[4], args[5]
     f = sortlist[i]
-    #print f
-    #print 'BEEP BOOP'
-    #print datadir
+    # print f
+    # print 'BEEP BOOP'
+    # print datadir
     hdulist = fits.open(datadir + f)
     hdu = hdulist[0]
     head = hdu.header
     data = hdu.data
-    data = data[0,0,:,:]
-    #print data.shape
+    data = data[0, 0, :, :]
+    # print data.shape
     hdulist.close()
     grid = abs(head['CDELT1'])
-    freq = head['CRVAL3'] #+ (i + 1 - head['CRPIX3']) * head['CDELT3']
-    #print freq
+    freq = head['CRVAL3']  # + (i + 1 - head['CRPIX3']) * head['CDELT3']
+    # print freq
     hpbw_o = hpbw_r * (freq_r) / freq
     if hpbw_n <= hpbw_o:
         print('continue')
@@ -176,6 +180,7 @@ def smoothloop(args):
         g = Gaussian2DKernel(hpbw / (2. * np.sqrt(2. * np.log(2.))) / grid)
         data = convolve(data, g, boundary='extend')
         return [data, freq]
+
 
 def smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist):
     '''
@@ -188,14 +193,14 @@ def smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist):
     print('Smoothing data to HPBW of %f' % hpbw_n + 'arcmin')
     print('Entering loop')
     tic = timeit.default_timer()
-    output = pool.map(smoothloop, \
-        ([hpbw_r, freq_r, hpbw_n, datadir, sortlist, i] for i in range(len(sortlist))))
+    output = pool.map(smoothloop,
+                      ([hpbw_r, freq_r, hpbw_n, datadir, sortlist, i] for i in range(len(sortlist))))
     print('Loop done')
     toc = timeit.default_timer()
     print('Time taken = %f' % (toc - tic))
-    #print len(datacube)
+    # print len(datacube)
     output = [x for x in output if x is not None]
-    #print 'BEEP BOOP'
+    # print 'BEEP BOOP'
     datacube = []
     freqs = []
     for i in range(len(output)):
@@ -206,6 +211,7 @@ def smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist):
     freqs = np.array(freqs)
     datacube = np.array(datacube)
     return datacube, freqs
+
 
 def writetodisk(datadir, smoothcube, source, stoke, sortlist, hpbw_n, freqs):
     '''
@@ -219,19 +225,20 @@ def writetodisk(datadir, smoothcube, source, stoke, sortlist, hpbw_n, freqs):
     hdulist.close()
     targ_head = head.copy()
     del targ_head[0:8]
-    bad_cards = ['CRPIX4', 'CDELT4', 'CRVAL4', 'CTYPE4', 'RMS',\
-         'CRPIX3', 'CDELT3', 'CRVAL3']
+    bad_cards = ['CRPIX4', 'CDELT4', 'CRVAL4', 'CTYPE4', 'RMS',
+                 'CRPIX3', 'CDELT3', 'CRVAL3']
     for card in bad_cards:
         del targ_head[card]
     new_cards = ['BMAJ', 'BMIN', 'BPA']
     new_vals = [hpbw_n, hpbw_n, 0.]
     for i in range(len(new_cards)):
         targ_head[new_cards[i]] = new_vals[i]
-    print('Written frequencies to ' + datadir+source+'.'+stoke+'.frequencies.txt')
+    print('Written frequencies to ' + datadir +
+          source+'.'+stoke+'.frequencies.txt')
     np.savetxt(datadir+source+'.'+stoke+'.frequencies.txt', freqs, fmt='%f')
     print('Written FITS to ' + datadir+source+'.'+stoke+'.smooth.fits')
-    fits.writeto(datadir+source+'.'+stoke+'.smooth.fits', smoothcube, targ_head)
-
+    fits.writeto(datadir+source+'.'+stoke +
+                 '.smooth.fits', smoothcube, targ_head)
 
 
 if __name__ == "__main__":
@@ -247,7 +254,7 @@ if __name__ == "__main__":
     # Parse the command line options
     parser = argparse.ArgumentParser(description=descStr,
                                      formatter_class=argparse.RawTextHelpFormatter)
-    #parser.add_argument("--d", dest="datadir", default='.', nargs=1,
+    # parser.add_argument("--d", dest="datadir", default='.', nargs=1,
     #                   type=str, help="Directory containing data.")
     parser.add_argument("datadir", metavar="datadir", nargs=1, default='.',
                         type=str, help="Directory containing data.")
@@ -258,41 +265,34 @@ if __name__ == "__main__":
     group.add_argument("--mpi", dest="mpi", default=False,
                        action="store_true", help="Run with MPI.")
 
-
     args = parser.parse_args()
     pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
-    #pdb.set_trace()
+    # pdb.set_trace()
     datadir = args.datadir[0]
     print('Combining data in ' + datadir)
     source, ilist, qlist, ulist = readfiles(datadir)
 
     freqlist, sortlist = getfreq(datadir, [ilist, qlist, ulist])
-    #print freqlist/1e6
-    #print sortlist
+    # print freqlist/1e6
+    # print sortlist
 
     hpbw_r, freq_r, hpbw_n = getbigframe(datadir, sortlist[0])
-    #print hpbw_r, freq_r, hpbw_n
-
+    # print hpbw_r, freq_r, hpbw_n
 
     for i in range(len(sortlist)):
         'Smoothing...'
-        if i==0:
+        if i == 0:
             stoke = 'i'
-        if i==1:
+        if i == 1:
             stoke = 'q'
-        if i==2:
+        if i == 2:
             stoke = 'u'
         print('Stokes ' + stoke)
-        smoothcube, freqs = smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist[i])
+        smoothcube, freqs = smcube(
+            pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist[i])
         'Writing to disk...'
-        writetodisk(datadir, smoothcube, source, stoke, sortlist, hpbw_n, freqs)
+        writetodisk(datadir, smoothcube, source,
+                    stoke, sortlist, hpbw_n, freqs)
     pool.close()
     print('Done!')
-
-
-
-
-
-
-
 
