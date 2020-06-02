@@ -46,11 +46,11 @@ class RealSource:
             fmax = np.amax(self.data['freq'])
         ind = np.where(np.logical_and(self.data['freq']>=fmin,self.data['freq']<=fmax))
         if inplace:
-            for k in list(self.data.keys()):
+            for k in self.data.keys():
                 self.data[k] = self.data[k][ind]
         else:
             subset = self.copy()
-            for k in list(subset.data.keys()):
+            for k in subset.data.keys():
                 subset.data[k] = subset.data[k][ind]
             return subset
 
@@ -94,10 +94,10 @@ class SimulatedSource:
         result = self.copy()
         if lm == 0:
             print("Append mode")
-            for k in list(self.data.keys()):
+            for k in self.data.keys():
                 result.data[k] = np.append(self.data[k],y.data[k])
             ind = np.argsort(result.data['freq'])
-            for k in list(result.data.keys()):
+            for k in result.data.keys():
                 result.data[k] = result.data[k][ind]
         elif lm == len(self.data['freq']):
             print("Add mode")
@@ -105,7 +105,7 @@ class SimulatedSource:
             if np.sum(np.abs(self.data['freq']-y.data['freq']))>0.:
                 print("Frequencies must be the same if they overlap")
                 raise NotImplementedError
-            for k in list(self.data.keys()):
+            for k in self.data.keys():
                 if k=='freq':
                     pass
                 else:
@@ -116,7 +116,7 @@ class SimulatedSource:
         return result
 
     def set_noise(self, **kwargs):
-        for key, value in list(kwargs.items()):
+        for key, value in kwargs.items():
             if key=='inoise':
                 self.noise['I'] = value
             elif key=='qnoise':
@@ -130,7 +130,7 @@ class SimulatedSource:
             elif key=='unoisestd':
                 self.noisestd['U'] = value
             else:
-                print(('WARNING: key',key,'ignored'))
+                print('WARNING: key',key,'ignored')
 
     def write_data(self, filename, reformatted=False):
         if reformatted:
@@ -164,11 +164,11 @@ class SimulatedSource:
         self.nmodels[0] += 1
 
     def add_simple_rm(self, pfrac, rm, chi0):
-        print(('Polarization fraction is',pfrac))
-        print(('Intrinsic pol angle is',chi0,'deg'))
+        print('Polarization fraction is',pfrac)
+        print('Intrinsic pol angle is',chi0,'deg')
         chi0 *= np.pi/180.
-        print(('Intrinsic pol angle is',chi0,'rad'))
-        print(('RM is',rm,'rad/m2'))
+        print('Intrinsic pol angle is',chi0,'rad')
+        print('RM is',rm,'rad/m2')
         pvals = pfrac*self.data['I']*np.exp(2.j*(chi0+rm*self.data['lamsq']))
         self.data['Q'] += np.real(pvals)
         self.data['U'] += np.imag(pvals)
@@ -176,13 +176,13 @@ class SimulatedSource:
         self.nmodels[1] += 1
 
     def add_dfr(self, pfrac, R, rm, chi0):
-        print(('Polarization fraction is',pfrac))
-        print(('Intrinsic pol angle is',chi0,'deg'))
+        print('Polarization fraction is',pfrac)
+        print('Intrinsic pol angle is',chi0,'deg')
         chi0 *= np.pi/180.
-        print(('Intrinsic pol angle is',chi0,'rad'))
-        print(('Faraday depth is',R,'rad/m2'))
+        print('Intrinsic pol angle is',chi0,'rad')
+        print('Faraday depth is',R,'rad/m2')
         # print('Additional RM is',rm,'rad/m2')
-        print(('Effective RM is',rm,'rad/m2'))
+        print('Effective RM is',rm,'rad/m2')
         # pvals = pfrac*self.data['I']*np.sin(R*self.data['lamsq'])/(R*self.data['lamsq'])*np.exp(2.j*(chi0+0.5*R*self.data['lamsq']+rm*self.data['lamsq']))
         pvals = pfrac*self.data['I']*np.sin(R*self.data['lamsq'])/(R*self.data['lamsq'])*np.exp(2.j*(chi0+rm*self.data['lamsq']))
         self.data['Q'] += np.real(pvals)
@@ -191,13 +191,13 @@ class SimulatedSource:
         self.nmodels[1] += 1
 
     def add_ext(self, pfrac, sig, rm, chi0):
-        print(('Polarization fraction is',pfrac))
-        print(('Intrinsic pol angle is',chi0,'deg'))
+        print('Polarization fraction is',pfrac)
+        print('Intrinsic pol angle is',chi0,'deg')
         chi0 *= np.pi/180.
-        print(('Intrinsic pol angle is',chi0,'rad'))
-        print(('Dispersion in rm is',sig,'rad/m2'))
+        print('Intrinsic pol angle is',chi0,'rad')
+        print('Dispersion in rm is',sig,'rad/m2')
         # print('Additional RM is',rm,'rad/m2')
-        print(('Effective RM is',rm,'rad/m2'))
+        print('Effective RM is',rm,'rad/m2')
         pvals = pfrac*self.data['I']*np.exp(-2.*sig**2*self.data['lamsq']**2)*np.exp(2.j*(chi0+rm*self.data['lamsq']))
         self.data['Q'] += np.real(pvals)
         self.data['U'] += np.imag(pvals)
@@ -205,14 +205,14 @@ class SimulatedSource:
         self.nmodels[1] += 1
 
     def add_mix(self, pfrac, R, sig, rm, chi0):
-        print(('Polarization fraction is',pfrac))
-        print(('Intrinsic pol angle is',chi0,'deg'))
+        print('Polarization fraction is',pfrac)
+        print('Intrinsic pol angle is',chi0,'deg')
         chi0 *= np.pi/180.
-        print(('Intrinsic pol angle is',chi0,'rad'))
-        print(('Faraday depth is',R,'rad/m2'))
-        print(('Dispersion in rm is',sig,'rad/m2'))
+        print('Intrinsic pol angle is',chi0,'rad')
+        print('Faraday depth is',R,'rad/m2')
+        print('Dispersion in rm is',sig,'rad/m2')
         # print('Additional RM is',rm,'rad/m2')
-        print(('Effective RM is',rm,'rad/m2'))
+        print('Effective RM is',rm,'rad/m2')
         pvals = pfrac*self.data['I']*np.sin(R*self.data['lamsq'])/(R*self.data['lamsq'])*np.exp(-2.*sig**2*self.data['lamsq']**2)*np.exp(2.j*(chi0+rm*self.data['lamsq']))
         self.data['Q'] += np.real(pvals)
         self.data['U'] += np.imag(pvals)
@@ -287,7 +287,7 @@ class SimulatedSource:
                         amp = pfrac*np.exp(-(phi[ind]-(rm+R))**2/(2.*srm**2))
                         model_fdf[ind] += (amp*np.exp(1.j*chi0))
             else:
-                print(('Warning: not sure what this QU model is:', qumodel[0]))
+                print('Warning: not sure what this QU model is:', qumodel[0])
                 print('No model FDF generated.')
         self.model_fdf['phi'] = phi
         self.model_fdf['data'] = model_fdf

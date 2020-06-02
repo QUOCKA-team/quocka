@@ -71,7 +71,7 @@ def main():
 	
 	outfile = open('freq.txt','w')
 	for frq in i_freq[i_ind_list]:
-		print(frq, file=outfile)
+		print >>outfile, frq
 	outfile.close()
 
 	makecube(i_smo_list,'icube.fits')

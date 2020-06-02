@@ -5,7 +5,7 @@
 # Updated by GH and PP 10 December 2018
 
 import sys, pyfits 
-import argparse, configparser
+import argparse, ConfigParser
 import glob, os
 from subprocess import call
 import numpy as np
@@ -14,7 +14,7 @@ from astropy.io import fits
 sourcename = sys.argv[1]
 mfsdir = '../../scal_makeup/'
 vislist = sorted(glob.glob(sourcename+'.????'))
-print(vislist)
+print vislist
 
 def getnoise(img_name):
 	hdu = fits.open(img_name)
@@ -43,7 +43,7 @@ for vis in vislist:
 		cellsize = 0.5
 # 	imsize = 1600
 	else:
-		print('Which frequency is this?')
+		print 'Which frequency is this?'
 		exit(1)
 
 	call(['invert','vis=%s.%s'%(sourcename,freqband),

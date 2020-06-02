@@ -13,8 +13,8 @@ NFBIN = 2
 
 # Print a log file
 def logprint(s2p,lf):
-	print(s2p, file=lf)
-	print(s2p)
+	print >>lf, s2p
+	print s2p
 
 # Get the rms and peak flux of an image. RMS is estimated using a clipped version of the image data.
 def get_noise(img_name):

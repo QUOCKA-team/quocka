@@ -20,7 +20,7 @@ def readfiles(datadir):
     Read list of fits files from data-directory.
     Split by Stokes.
     '''
-    print 'Getting data -- Splitting by Stokes...'
+    print('Getting data -- Splitting by Stokes...')
     files = list_files(datadir,'fits')
     filelist = []
     chanlist = []
@@ -61,7 +61,7 @@ def getfreq(datadir, datalist):
     Get frequencies from headers.
     Sort file list by frequency.
     '''
-    print 'Getting frequencies from Stokes I headers...'
+    print('Getting frequencies from Stokes I headers...')
     ilist, qlist, ulist = datalist
     freqi = []
     for f in ilist:
@@ -99,13 +99,13 @@ def getfreq(datadir, datalist):
         frequ.append(freq)
 
     freqi = np.array(freqi)
-    freqi, sortlisti = zip(*sorted(zip(freqi, ilist)))
+    freqi, sortlisti = list(zip(*sorted(zip(freqi, ilist))))
 
     freqq = np.array(freqq)
-    freqq, sortlistq = zip(*sorted(zip(freqq, qlist)))
+    freqq, sortlistq = list(zip(*sorted(zip(freqq, qlist))))
 
     frequ = np.array(frequ)
-    frequ, sortlistu = zip(*sorted(zip(frequ, ulist)))
+    frequ, sortlistu = list(zip(*sorted(zip(frequ, ulist))))
     #print freqlist
     return freqi, [sortlisti, sortlistq, sortlistu]
 
@@ -169,7 +169,7 @@ def smoothloop(args):
     #print freq
     hpbw_o = hpbw_r * (freq_r) / freq
     if hpbw_n <= hpbw_o:
-        print 'continue'
+        print('continue')
         pass
     else:
         hpbw = np.sqrt(hpbw_n**2 - hpbw_o**2) / 60.
@@ -185,14 +185,14 @@ def smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist):
     hpbw_n -- new common FWHM (arcmin)?
     TO-DO: Write freq file
     '''
-    print 'Smoothing data to HPBW of %f' % hpbw_n + 'arcmin'
-    print 'Entering loop'
+    print('Smoothing data to HPBW of %f' % hpbw_n + 'arcmin')
+    print('Entering loop')
     tic = timeit.default_timer()
     output = pool.map(smoothloop, \
         ([hpbw_r, freq_r, hpbw_n, datadir, sortlist, i] for i in range(len(sortlist))))
-    print 'Loop done'
+    print('Loop done')
     toc = timeit.default_timer()
-    print 'Time taken = %f' % (toc - tic)
+    print('Time taken = %f' % (toc - tic))
     #print len(datacube)
     output = [x for x in output if x is not None]
     #print 'BEEP BOOP'
@@ -227,9 +227,9 @@ def writetodisk(datadir, smoothcube, source, stoke, sortlist, hpbw_n, freqs):
     new_vals = [hpbw_n, hpbw_n, 0.]
     for i in range(len(new_cards)):
         targ_head[new_cards[i]] = new_vals[i]
-    print 'Written frequencies to ' + datadir+source+'.'+stoke+'.frequencies.txt'
+    print('Written frequencies to ' + datadir+source+'.'+stoke+'.frequencies.txt')
     np.savetxt(datadir+source+'.'+stoke+'.frequencies.txt', freqs, fmt='%f')
-    print 'Written FITS to ' + datadir+source+'.'+stoke+'.smooth.fits'
+    print('Written FITS to ' + datadir+source+'.'+stoke+'.smooth.fits')
     fits.writeto(datadir+source+'.'+stoke+'.smooth.fits', smoothcube, targ_head)
 
 
@@ -263,7 +263,7 @@ if __name__ == "__main__":
     pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
     #pdb.set_trace()
     datadir = args.datadir[0]
-    print 'Combining data in ' + datadir
+    print('Combining data in ' + datadir)
     source, ilist, qlist, ulist = readfiles(datadir)
 
     freqlist, sortlist = getfreq(datadir, [ilist, qlist, ulist])
@@ -282,12 +282,12 @@ if __name__ == "__main__":
             stoke = 'q'
         if i==2:
             stoke = 'u'
-        print 'Stokes ' + stoke
+        print('Stokes ' + stoke)
         smoothcube, freqs = smcube(pool, hpbw_r, freq_r, hpbw_n, datadir, sortlist[i])
         'Writing to disk...'
         writetodisk(datadir, smoothcube, source, stoke, sortlist, hpbw_n, freqs)
     pool.close()
-    print 'Done!'
+    print('Done!')
 
 
 
