@@ -18,7 +18,21 @@ from IPython import embed
 
 
 def getmaxbeam(data_dict, band, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=False, debug=False):
-    """Get largest beam
+    """Find common beam.
+
+    Arguments:
+        data_dict {dict} -- Dict containing fits files.
+        band {int} -- ATCA band name.
+
+    Keyword Arguments:
+        tolerance {float} -- See common_beam (default: {0.0001})
+        nsamps {int} -- See common_beam (default: {200})
+        epsilon {float} -- See common_beam (default: {0.0005})
+        verbose {bool} -- Verbose output (default: {False})
+        debug {bool} -- Show dubugging plots (default: {False})
+
+    Returns:
+        beam_dict {dict} -- Beam and frequency data.
     """
     files = data_dict[band]
     stokes = ['i', 'q', 'u', 'v']
@@ -96,6 +110,20 @@ def getmaxbeam(data_dict, band, tolerance=0.0001, nsamps=200, epsilon=0.0005, ve
 
 
 def smooth(inps, new_beam, verbose=False):
+    """Smooth an image to a new resolution.
+
+    Arguments:
+        inps {tuple} -- (filename, old_beam)
+            filename {str} -- name of fits file
+            old_beam {Beam} -- beam of image
+        new_beam {Beam} -- Target resolution
+
+    Keyword Arguments:
+        verbose {bool} -- Verbose output (default: {False})
+
+    Returns:
+        newim {array} -- Image smoothed to new resolution.
+    """
     filename, old_beam = inps
     if verbose:
         print(f'Getting image data from {filename}')
@@ -141,6 +169,21 @@ def smooth(inps, new_beam, verbose=False):
 
 
 def writecube(data, freqs, header, beam, band, stoke, field, outdir, verbose=True):
+    """Write cube to disk.
+
+    Arguments:
+        data {array} -- Datacube to save.
+        freqs {array} -- Frequency list correspondng to cube.
+        header {header} -- Header for image.
+        beam {Beam} -- New common resolution beam.
+        band {int} -- ATCA band name.
+        stoke {str} -- Stokes parameter.
+        field {str} -- QUOCKA field name.
+        outdir {str} -- Directory to save output.
+
+    Keyword Arguments:
+        verbose {bool} -- Verbose output (default: {True})
+    """
     # Make filename
     outfile = f"{field}.{band}.{stoke}.cutout.contcube.fits"
 
@@ -267,13 +310,9 @@ def cli():
 
     # Help string to be shown using the -h option
     descStr = """
-    Smooth a field of 2D images to a common resolution.
+    Produce common resolution cubes for QUOCKA data.
 
-    Names of output files are 'infile'.sm.fits
-
-    NOTE: Glob is used to parse wildcards. So if you want to run on 
-        *.fits, use: python beamcon_2D.py '*.fits'
-        i.e. parse the wildcard as a string.
+    A seperate cube per band will be produced, along with frequency text files.
 
     """
 
@@ -292,14 +331,6 @@ def cli():
         metavar='field',
         type=str,
         help='QUOCKA field name.')
-
-    parser.add_argument(
-        '-p',
-        '--prefix',
-        dest='prefix',
-        type=str,
-        default=None,
-        help='Add prefix to output filenames.')
 
     parser.add_argument(
         '-o',
