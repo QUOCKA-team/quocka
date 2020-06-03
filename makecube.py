@@ -17,7 +17,7 @@ from functools import partial
 from IPython import embed
 
 
-def getmaxbeam(data_dict, band, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=False, debug=False):
+def getmaxbeam(data_dict, band, cutoff=15*u.arcsec, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=False, debug=False):
     """Find common beam.
 
     Arguments:
@@ -50,45 +50,44 @@ def getmaxbeam(data_dict, band, tolerance=0.0001, nsamps=200, epsilon=0.0005, ve
             [beam.minor.value for beam in beams]*u.deg,
             [beam.pa.value for beam in beams]*u.deg
         )
+        flags = beams.major > cutoff
         beam_dict.update(
             {
                 stoke+'_beams': beams,
-                stoke+'_freqs': np.array(freqs)*u.Hz
+                stoke+'_freqs': np.array(freqs)*u.Hz,
+                stoke+'_flags': flags
             }
         )
     if debug:
         plt.figure()
         plt.title(band)
         for stoke in stokes:
-            plt.plot(beam_dict[stoke+'_freqs'], beam_dict[stoke +
-                                                          '_beams'].major.to(u.arcsec), label=stoke)
+            idx = [not flag for flag in beam_dict[stoke+'_flags']]
+            plt.plot(beam_dict[stoke+'_freqs'][idx],
+                     beam_dict[stoke + '_beams'].major.to(u.arcsec)[idx],
+                     '.',
+                     alpha=0.5,
+                     label=stoke+'--BMAJ')
+
+        plt.plot(beam_dict[stoke+'_freqs'][idx],
+                 beam_dict[stoke + '_beams'].minor.to(u.arcsec)[idx],
+                 '.',
+                 alpha=0.5,
+                 label=stoke+'--BMIN')
         plt.xlabel('Frequency [Hz]')
-        plt.ylabel('BMAJ [arcsec]')
+        plt.ylabel('Beam size [arcsec]')
         plt.legend()
         plt.show()
 
-        plt.figure()
-        plt.title(band)
-        for stoke in stokes:
-            plt.plot(beam_dict[stoke+'_freqs'], beam_dict[stoke +
-                                                          '_beams'].minor.to(u.arcsec), label=stoke)
-        plt.xlabel('Frequency [Hz')
-        plt.ylabel('BMIN [arcsec]')
-        plt.legend()
-        plt.show()
-
-    bmaj = list(beam_dict['i_beams'].major.value) + \
-        list(list(beam_dict['q_beams'].major.value)) + \
-        list(beam_dict['u_beams'].major.value) + \
-        list(beam_dict['v_beams'].major.value)
-    bmin = list(beam_dict['i_beams'].minor.value) + \
-        list(list(beam_dict['q_beams'].minor.value)) + \
-        list(beam_dict['u_beams'].minor.value) + \
-        list(beam_dict['v_beams'].minor.value)
-    bpa = list(beam_dict['i_beams'].pa.value) + \
-        list(list(beam_dict['q_beams'].pa.value)) + \
-        list(beam_dict['u_beams'].pa.value) + \
-        list(beam_dict['v_beams'].pa.value)
+    bmaj = []
+    bmin = []
+    bpa = []
+    for stoke in stokes:
+        bmaj += list(beam_dict[f'{stoke}_beams']
+                     .major.value[~beam_dict[f'{stoke}_flags']])
+        bmin += list(beam_dict[f'{stoke}_beams']
+                     .minor.value[~beam_dict[f'{stoke}_flags']])
+        bpa += list(beam_dict[f'{stoke}_beams'].pa.value[~beam_dict[f'{stoke}_flags']])
 
     big_beams = Beams(bmaj*u.deg, bmin*u.deg, bpa*u.deg)
 
@@ -101,6 +100,48 @@ def getmaxbeam(data_dict, band, tolerance=0.0001, nsamps=200, epsilon=0.0005, ve
             print("Trying again with smaller tolerance")
         cmn_beam = big_beams.common_beam(
             tolerance=tolerance*0.1, epsilon=epsilon, nsamps=nsamps)
+
+    if debug:
+        from matplotlib.patches import Ellipse
+        pixscale = 1*u.arcsec
+        fig = plt.figure()
+        ax = plt.gca()
+        for beam in big_beams:
+            ellipse = Ellipse((0, 0),
+                              width=(beam.major.to(u.deg) /
+                                     pixscale).to(u.dimensionless_unscaled).value,
+                              height=(beam.minor.to(u.deg) /
+                                      pixscale).to(u.dimensionless_unscaled).value,
+                              # PA is 90 deg offset from x-y axes by convention
+                              # (it is angle from NCP)
+                              angle=(beam.pa+90*u.deg).to(u.deg).value,
+                              edgecolor='k',
+                              fc='None',
+                              lw=1,
+                              alpha=0.1)
+            ax.add_artist(ellipse)
+        ellipse = Ellipse((0, 0),
+                          width=(cmn_beam.major.to(u.deg) /
+                                 pixscale).to(u.dimensionless_unscaled).value,
+                          height=(cmn_beam.minor.to(u.deg) /
+                                  pixscale).to(u.dimensionless_unscaled).value,
+                          # PA is 90 deg offset from x-y axes by convention
+                          # (it is angle from NCP)
+                          angle=(cmn_beam.pa+90*u.deg).to(u.deg).value,
+                          edgecolor='r',
+                          fc='None',
+                          lw=2,
+                          alpha=1,)
+        ax.add_artist(ellipse)
+        label = f"BMAJ={cmn_beam.major.to(u.arcsec).round()}, BMIN={cmn_beam.minor.to(u.arcsec).round()}, BPA={cmn_beam.pa.to(u.deg).round()}"
+        plt.plot([np.nan], [np.nan], 'r', label=label)
+        plt.xlim(-0.2*60, 0.2*60)
+        plt.ylim(-0.2*60, 0.2*60)
+        plt.xlabel('$\Delta$ RA [arcsec]')
+        plt.ylabel('$\Delta$ DEC [arcsec]')
+        plt.legend()
+        plt.show()
+
     beam_dict.update(
         {
             'common_beam': cmn_beam
@@ -113,9 +154,10 @@ def smooth(inps, new_beam, verbose=False):
     """Smooth an image to a new resolution.
 
     Arguments:
-        inps {tuple} -- (filename, old_beam)
+        inps {tuple} -- (filename, old_beam, flag)
             filename {str} -- name of fits file
             old_beam {Beam} -- beam of image
+            flag {bool} -- flag this channel
         new_beam {Beam} -- Target resolution
 
     Keyword Arguments:
@@ -124,7 +166,7 @@ def smooth(inps, new_beam, verbose=False):
     Returns:
         newim {array} -- Image smoothed to new resolution.
     """
-    filename, old_beam = inps
+    filename, old_beam, flag = inps
     if verbose:
         print(f'Getting image data from {filename}')
     with fits.open(filename, memmap=True, mode='denywrite') as hdu:
@@ -134,37 +176,41 @@ def smooth(inps, new_beam, verbose=False):
                              :].shape[0], hdu[0].data[0, 0, :, :].shape[1]
         image = np.squeeze(hdu[0].data).astype('float64')
 
-    con_beam = new_beam.deconvolve(old_beam)
-    fac, amp, outbmaj, outbmin, outbpa = au2.gauss_factor(
-        [
-            con_beam.major.to(u.arcsec).value,
-            con_beam.minor.to(u.arcsec).value,
-            con_beam.pa.to(u.deg).value
-        ],
-        beamOrig=[
-            old_beam.major.to(u.arcsec).value,
-            old_beam.minor.to(u.arcsec).value,
-            old_beam.pa.to(u.deg).value
-        ],
-        dx1=dx.to(u.arcsec).value,
-        dy1=dy.to(u.arcsec).value
-    )
+    if flag:
+        newim = np.ones_like(image)*np.nan
 
-    if verbose:
-        print(f'Smoothing so beam is', new_beam)
-        print(f'Using convolving beam', con_beam)
+    else:
+        con_beam = new_beam.deconvolve(old_beam)
+        fac, amp, outbmaj, outbmin, outbpa = au2.gauss_factor(
+            [
+                con_beam.major.to(u.arcsec).value,
+                con_beam.minor.to(u.arcsec).value,
+                con_beam.pa.to(u.deg).value
+            ],
+            beamOrig=[
+                old_beam.major.to(u.arcsec).value,
+                old_beam.minor.to(u.arcsec).value,
+                old_beam.pa.to(u.deg).value
+            ],
+            dx1=dx.to(u.arcsec).value,
+            dy1=dy.to(u.arcsec).value
+        )
 
-    pix_scale = dy
+        if verbose:
+            print(f'Smoothing so beam is', new_beam)
+            print(f'Using convolving beam', con_beam)
 
-    gauss_kern = con_beam.as_kernel(pix_scale)
+        pix_scale = dy
 
-    conbm1 = gauss_kern.array/gauss_kern.array.max()
+        gauss_kern = con_beam.as_kernel(pix_scale)
 
-    newim = scipy.signal.convolve(image, conbm1, mode='same')
+        conbm1 = gauss_kern.array/gauss_kern.array.max()
 
-    newim *= fac
-    if verbose:
-        sys.stdout.flush()
+        newim = scipy.signal.convolve(image, conbm1, mode='same')
+
+        newim *= fac
+        if verbose:
+            sys.stdout.flush()
     return newim
 
 
@@ -190,8 +236,8 @@ def writecube(data, freqs, header, beam, band, stoke, field, outdir, verbose=Tru
     # Sort data
     sort_idx = freqs.argsort()
     freqs_sorted = freqs[sort_idx]
-    data_sorted = data[sort_idx,:,:]
-    
+    data_sorted = data[sort_idx, :, :]
+
     # Make header
     d_freq = np.nanmedian(np.diff(freqs_sorted))
     del header['HISTORY']
@@ -200,9 +246,10 @@ def writecube(data, freqs, header, beam, band, stoke, field, outdir, verbose=Tru
     header['CDELT3'] = d_freq.to_value()
     header['COMMENT'] = 'DO NOT rely on this header for correct frequency data!'
     header['COMMENT'] = 'Use accompanying frequency text file.'
-    
+
     # Save the data
-    fits.writeto(f'{outdir}/{outfile}', data_sorted, header=header, overwrite=True)
+    fits.writeto(f'{outdir}/{outfile}', data_sorted,
+                 header=header, overwrite=True)
     if verbose:
         print("Saved cube to", f'{outdir}/{outfile}')
 
@@ -279,7 +326,8 @@ def main(pool, args, verbose=False):
                 tqdm(
                     pool.imap(smooth_partial,
                               zip(data_dict[band][stoke],
-                                  data_dict[band][stoke+'_beams'])
+                                  data_dict[band][stoke+'_beams'],
+                                  data_dict[band][stoke+'_flags'])
                               ),
                     total=len(data_dict[band][stoke]),
                     disable=(not verbose),
@@ -338,7 +386,15 @@ def cli():
         dest='outdir',
         type=str,
         default=None,
-        help='(Optional) Save cubes to different directory.')
+        help='(Optional) Save cubes to different directory [datadir].')
+
+    parser.add_argument(
+        '-c',
+        '--cutoff',
+        dest='cutoff',
+        type=float,
+        default=15,
+        help="Flags channels with BMAJ > cutoff in arcsec [15]")
 
     parser.add_argument(
         "-v",
