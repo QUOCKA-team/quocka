@@ -350,6 +350,8 @@ def main(pool, args, verbose=False):
                           outdir,
                           verbose=verbose)
 
+    if verbose:
+        print('Done!')
 
 def cli():
     """Command-line interface
