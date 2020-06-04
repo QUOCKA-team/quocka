@@ -231,7 +231,7 @@ def writecube(data, freqs, header, beam, band, stoke, field, outdir, verbose=Tru
         verbose {bool} -- Verbose output (default: {True})
     """
     # Make filename
-    outfile = f"{field}.{band}.{stoke}.cutout.contcube.fits"
+    outfile = f"{field}.{band}.{stoke}.cutout.bandcube.fits"
 
     # Sort data
     sort_idx = freqs.argsort()
@@ -254,7 +254,7 @@ def writecube(data, freqs, header, beam, band, stoke, field, outdir, verbose=Tru
         print("Saved cube to", f'{outdir}/{outfile}')
 
     if stoke == 'i':
-        freqfile = f"{field}.{band}.contcube.frequencies.txt"
+        freqfile = f"{field}.{band}.bandcube.frequencies.txt"
         np.savetxt(f"{outdir}/{freqfile}", freqs_sorted.to_value())
         if verbose:
             print("Saved frequencies to", f"{outdir}/{freqfile}")
@@ -350,6 +350,8 @@ def main(pool, args, verbose=False):
                           outdir,
                           verbose=verbose)
 
+    if verbose:
+        print('Done!')
 
 def cli():
     """Command-line interface
