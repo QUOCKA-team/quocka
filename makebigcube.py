@@ -56,8 +56,6 @@ def getmaxbeam(file_dict, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=
             print("Trying again with smaller tolerance")
         cmn_beam = beams.common_beam(
             tolerance=tolerance*0.1, epsilon=epsilon, nsamps=nsamps)
-    if verbose:
-        print('Common beam is', cmn_beam)
     return cmn_beam
 
 
@@ -244,12 +242,18 @@ def main(pool, args, verbose=False):
             )
         }
     )
-    new_beam = getmaxbeam(file_dict,
-                          tolerance=args.tolerance,
-                          nsamps=args.nsamps,
-                          epsilon=args.epsilon,
-                          verbose=verbose)
-
+    if args.target is None:
+        new_beam = getmaxbeam(file_dict,
+                            tolerance=args.tolerance,
+                            nsamps=args.nsamps,
+                            epsilon=args.epsilon,
+                            verbose=verbose)
+    elif args.target is not None:
+        new_beam = Beam(major=args.target*u.arcsec,
+                        minor=args.target*u.arcsec,
+                        pa=0*u.deg)
+    if verbose:
+        print('Common beam is', new_beam)
     # Get data from files
     data_dict = {stoke: {} for stoke in stokes}
     for stoke in tqdm(stokes, desc='Getting data', disable=(not verbose)):
@@ -335,6 +339,12 @@ def cli():
         default=None,
         help='(Optional) Save cubes to different directory [datadir].')
 
+    parser.add_argument(
+        '--target',
+        dest='target',
+        type=float,
+        default=None,
+        help='Target resoltion (circular beam, BMAJ) in arcmin [None].')
 
     parser.add_argument(
         "-v",
