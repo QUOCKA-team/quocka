@@ -138,38 +138,41 @@ def smooth(inps, new_beam, verbose=False):
         newim {array} -- Smoothed image plane
     """
     image, dx, dy, old_beam = inps
-    con_beam = new_beam.deconvolve(old_beam)
-    fac, amp, outbmaj, outbmin, outbpa = au2.gauss_factor(
-        [
-            con_beam.major.to(u.arcsec).value,
-            con_beam.minor.to(u.arcsec).value,
-            con_beam.pa.to(u.deg).value
-        ],
-        beamOrig=[
-            old_beam.major.to(u.arcsec).value,
-            old_beam.minor.to(u.arcsec).value,
-            old_beam.pa.to(u.deg).value
-        ],
-        dx1=dx.to(u.arcsec).value,
-        dy1=dy.to(u.arcsec).value
-    )
+    if new_beam == old_beam:
+        return image
+    else:
+        con_beam = new_beam.deconvolve(old_beam)
+        fac, amp, outbmaj, outbmin, outbpa = au2.gauss_factor(
+            [
+                con_beam.major.to(u.arcsec).value,
+                con_beam.minor.to(u.arcsec).value,
+                con_beam.pa.to(u.deg).value
+            ],
+            beamOrig=[
+                old_beam.major.to(u.arcsec).value,
+                old_beam.minor.to(u.arcsec).value,
+                old_beam.pa.to(u.deg).value
+            ],
+            dx1=dx.to(u.arcsec).value,
+            dy1=dy.to(u.arcsec).value
+        )
 
-    if verbose:
-        print(f'Smoothing so beam is', new_beam)
-        print(f'Using convolving beam', con_beam)
+        if verbose:
+            print(f'Smoothing so beam is', new_beam)
+            print(f'Using convolving beam', con_beam)
 
-    pix_scale = dy
+        pix_scale = dy
 
-    gauss_kern = con_beam.as_kernel(pix_scale)
+        gauss_kern = con_beam.as_kernel(pix_scale)
 
-    conbm1 = gauss_kern.array/gauss_kern.array.max()
+        conbm1 = gauss_kern.array/gauss_kern.array.max()
 
-    newim = scipy.signal.convolve(image, conbm1, mode='same')
+        newim = scipy.signal.convolve(image, conbm1, mode='same')
 
-    newim *= fac
-    if verbose:
-        sys.stdout.flush()
-    return newim
+        newim *= fac
+        if verbose:
+            sys.stdout.flush()
+        return newim
 
 
 def writecube(data, beam, stoke, field, outdir, verbose=False):
