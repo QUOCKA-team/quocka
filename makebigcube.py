@@ -205,7 +205,7 @@ def writecube(data, beam, stoke, field, outdir, verbose=False):
     header['CDELT3'] = d_freq.to_value()
 
     # Save the data
-    fits.writeto(f'{outdir}/{outfile}', data['smooth cube'],
+    fits.writeto(f'{outdir}/{outfile}', data['regrid cube'],
                  header=header, overwrite=True)
     if verbose:
         print("Saved cube to", f'{outdir}/{outfile}')
@@ -245,7 +245,7 @@ def regrid(data, pool, verbose=False):
         tqdm(
             pool.imap(
                 worker_partial,
-                zip(data['cube'], imag_wcss)
+                zip(data['smooth cube'], imag_wcss)
             ),
             total=len(imag_wcss),
             desc='Regridding channels',
@@ -255,6 +255,7 @@ def regrid(data, pool, verbose=False):
 
     cube = np.array(im_list)
 
+    embed()
     return cube
 
 
@@ -313,14 +314,6 @@ def main(pool, args, verbose=False):
                        verbose=verbose)
         data_dict[stoke].update(data)
 
-    for stoke in tqdm(stokes, desc='Regridding data', disable=(not verbose)):
-        rgrd_cube = regrid(data_dict[stoke], pool, verbose=verbose)
-        data_dict[stoke].update(
-            {
-                "redgrid cube": rgrd_cube
-            }
-        )
-
     # Smooth to common beam
     for stoke in tqdm(stokes, desc='Smoothing data', disable=(not verbose)):
         smooth_partial = partial(smooth,
@@ -330,7 +323,7 @@ def main(pool, args, verbose=False):
         data = list(
             tqdm(
                 pool.imap(smooth_partial,
-                          zip(data_dict[stoke]['redgrid cube'],
+                          zip(data_dict[stoke]['cube'],
                               data_dict[stoke]['dx'],
                               data_dict[stoke]['dy'],
                               data_dict[stoke]['beams'])
@@ -344,6 +337,15 @@ def main(pool, args, verbose=False):
         data_dict[stoke].update(
             {
                 "smooth cube": data
+            }
+        )
+    
+    # Regrid to match common beam header
+    for stoke in tqdm(stokes, desc='Regridding data', disable=(not verbose)):
+        rgrd_cube = regrid(data_dict[stoke], pool, verbose=verbose)
+        data_dict[stoke].update(
+            {
+                "regrid cube": rgrd_cube
             }
         )
     if not args.dryrun:
