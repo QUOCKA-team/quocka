@@ -223,7 +223,7 @@ def regrid_worker(inps, target_wcs):
     if np.isnan(image).all():
         newim = image
     else:
-        newim, _ = rpj.reproject_exact(
+        newim = rpj.reproject_exact(
             (image, imag_wcs),
             target_wcs,
             return_footprint=False,
