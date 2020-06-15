@@ -254,8 +254,6 @@ def regrid(data, pool, verbose=False):
     )
 
     cube = np.array(im_list)
-
-    embed()
     return cube
 
 
