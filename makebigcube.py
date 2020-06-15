@@ -9,10 +9,12 @@ from radio_beam import Beam, Beams
 from radio_beam.utils import BeamError
 from astropy import units as u
 from astropy.io import fits
+from astropy.wcs import WCS
 import au2
 import scipy.signal
 import numpy as np
 from functools import partial
+import reproject as rpj
 from IPython import embed
 
 
@@ -82,6 +84,7 @@ def getdata(file_dict, new_beam, stoke, verbose=False):
 
     datacube = []
     beams = []
+    headers = []
 
     for file in file_dict[stoke]:
         data = fits.getdata(file)
@@ -90,6 +93,7 @@ def getdata(file_dict, new_beam, stoke, verbose=False):
         beam = Beam.from_fits_header(header)
         for i in range(data.shape[0]):
             beams.append(beam)
+            headers.append(header)
 
     beams_sorted = [beams[idx] for idx in sort_idx]
     beams_sorted = Beams(
@@ -103,9 +107,9 @@ def getdata(file_dict, new_beam, stoke, verbose=False):
     datacube_sorted = datacube[sort_idx]
 
     with fits.open(file_dict[stoke][0], memmap=True, mode='denywrite') as hdu:
-        header = hdu[0].header
-        dx = header['CDELT1']*-1*u.deg
-        dy = header['CDELT2']*u.deg
+        targ_header = hdu[0].header
+        dx = targ_header['CDELT1']*-1*u.deg
+        dy = targ_header['CDELT2']*u.deg
 
     dx_lst = [dx for i in range(len(freqs_sorted))]
     dy_lst = [dy for i in range(len(freqs_sorted))]
@@ -115,7 +119,9 @@ def getdata(file_dict, new_beam, stoke, verbose=False):
         "beams": beams_sorted,
         "dx": dx_lst,
         "dy": dy_lst,
-        "header": header
+        "target header": targ_header,
+        "headers": headers
+
     }
     return data
 
@@ -193,13 +199,13 @@ def writecube(data, beam, stoke, field, outdir, verbose=False):
 
     # Make header
     d_freq = np.nanmedian(np.diff(data['freqs']))
-    header = data['header']
+    header = data['target header']
     header = beam.attach_to_header(header)
     header['CRVAL3'] = data['freqs'][0].to_value()
     header['CDELT3'] = d_freq.to_value()
 
     # Save the data
-    fits.writeto(f'{outdir}/{outfile}', data['smooth cube'],
+    fits.writeto(f'{outdir}/{outfile}', data['regrid cube'],
                  header=header, overwrite=True)
     if verbose:
         print("Saved cube to", f'{outdir}/{outfile}')
@@ -209,6 +215,46 @@ def writecube(data, beam, stoke, field, outdir, verbose=False):
         np.savetxt(f"{outdir}/{freqfile}", data['freqs'].to_value())
         if verbose:
             print("Saved frequencies to", f"{outdir}/{freqfile}")
+
+
+def regrid_worker(inps, target_wcs):
+
+    image, imag_wcs = inps
+    if np.isnan(image).all():
+        newim = image
+    else:
+        newim, _ = rpj.reproject_exact(
+            (image, imag_wcs),
+            target_wcs,
+            return_footprint=False,
+            shape_out=image.shape,
+            parallel=False
+        )
+    return newim
+
+
+def regrid(data, pool, verbose=False):
+
+    imag_wcss = [WCS(header).celestial for header in data['headers']]
+
+    targ_wcs = WCS(data['target header']).celestial
+
+    worker_partial = partial(regrid_worker, target_wcs=targ_wcs)
+
+    im_list = list(
+        tqdm(
+            pool.imap(
+                worker_partial,
+                zip(data['smooth cube'], imag_wcss)
+            ),
+            total=len(imag_wcss),
+            desc='Regridding channels',
+            disable=(not verbose)
+        )
+    )
+
+    cube = np.array(im_list)
+    return cube
 
 
 def main(pool, args, verbose=False):
@@ -247,10 +293,10 @@ def main(pool, args, verbose=False):
     )
     if args.target is None:
         new_beam = getmaxbeam(file_dict,
-                            tolerance=args.tolerance,
-                            nsamps=args.nsamps,
-                            epsilon=args.epsilon,
-                            verbose=verbose)
+                              tolerance=args.tolerance,
+                              nsamps=args.nsamps,
+                              epsilon=args.epsilon,
+                              verbose=verbose)
     elif args.target is not None:
         new_beam = Beam(major=args.target*u.arcsec,
                         minor=args.target*u.arcsec,
@@ -291,6 +337,15 @@ def main(pool, args, verbose=False):
                 "smooth cube": data
             }
         )
+    
+    # Regrid to match common beam header
+    for stoke in tqdm(stokes, desc='Regridding data', disable=(not verbose)):
+        rgrd_cube = regrid(data_dict[stoke], pool, verbose=verbose)
+        data_dict[stoke].update(
+            {
+                "regrid cube": rgrd_cube
+            }
+        )
     if not args.dryrun:
         # Save the cubes
         for stoke in tqdm(stokes, desc='Writing cubes', disable=(not verbose)):
@@ -303,6 +358,7 @@ def main(pool, args, verbose=False):
 
     if verbose:
         print('Done!')
+
 
 def cli():
     """Command-line interface
