@@ -17,6 +17,10 @@ from functools import partial
 from IPython import embed
 
 
+def round_up(n, decimals=0):
+    multiplier = 10 ** decimals
+    return np.ceil(n * multiplier) / multiplier
+
 def getmaxbeam(data_dict, band, cutoff=15*u.arcsec, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=False, debug=False):
     """Find common beam.
 
@@ -100,6 +104,12 @@ def getmaxbeam(data_dict, band, cutoff=15*u.arcsec, tolerance=0.0001, nsamps=200
             print("Trying again with smaller tolerance")
         cmn_beam = big_beams.common_beam(
             tolerance=tolerance*0.1, epsilon=epsilon, nsamps=nsamps)
+
+    cmn_beam = Beam(
+        major=round_up(cmn_beam.major.to(u.arcsec), decimals=1),
+        minor=round_up(cmn_beam.minor.to(u.arcsec), decimals=1),
+        pa=round_up(cmn_beam.pa.to(u.deg), decimals=1)
+    )
 
     if debug:
         from matplotlib.patches import Ellipse
