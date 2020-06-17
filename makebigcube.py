@@ -99,7 +99,7 @@ def writecube(data, beam, stoke, field, outdir, verbose=False):
     header['CDELT3'] = d_freq.to_value()
 
     # Save the data
-    fits.writeto(f'{outdir}/{outfile}', data['smooth cube'],
+    fits.writeto(f'{outdir}/{outfile}', data['cube'],
                  header=header, overwrite=True)
     if verbose:
         print("Saved cube to", f'{outdir}/{outfile}')
@@ -192,16 +192,17 @@ def main(pool, args, verbose=False):
                 )
 
         # Regrid
+        target_wcs = datadict[2100]['wcs']
         for band in tqdm(bands, desc='Regridding data', disable=(not verbose)):
             worker = partial(
                 rpj.reproject_exact,
-                output_projection=datadict[2100]['wcs'].celestial,
+                output_projection=target_wcs.celestial,
                 shape_out=datadict[2100]['data'][0].shape,
                 parallel=False,
                 return_footprint=False
             )
-            wcs_targ = datadict[band]['wcs'].celestial
-            inputs = [(image, wcs_targ) for image in datadict[band]['data']]
+            input_wcs = datadict[band]['wcs'].celestial
+            inputs = [(image, input_wcs) for image in datadict[band]['data']]
             newcube = np.zeros_like(datadict[band]['data'])*np.nan
             out = list(
                 tqdm(
@@ -221,10 +222,11 @@ def main(pool, args, verbose=False):
             )
 
         # Get scaling factors and convolution kernels
+        target_header = datadict[2100]['head']
         for band in tqdm(bands, desc='Computing scaling factors', disable=(not verbose)):
             con_beam = new_beam.deconvolve(datadict[band]['beam'])
-            dx = datadict[2100]['head']['CDELT1']*-1*u.deg
-            dy = datadict[2100]['head']['CDELT2']*u.deg
+            dx = target_header['CDELT1']*-1*u.deg
+            dy = target_header['CDELT2']*u.deg
             fac, amp, outbmaj, outbmin, outbpa = au2.gauss_factor(
                 [
                     con_beam.major.to(u.arcsec).value,
@@ -245,7 +247,13 @@ def main(pool, args, verbose=False):
             datadict[band].update(
                 {
                     'conbeam': conbm,
-                    'fac': fac
+                    'fac': fac,
+                    'target header': target_header
+                }
+            )
+            datadict.update(
+                {
+                    'target header': target_header
                 }
             )
 
@@ -298,10 +306,42 @@ def main(pool, args, verbose=False):
             plt.show()
 
     # Make cubes
-    for stoke in stokes:
-        embed()
-        stoke_dict[stoke]
-        
+    for stoke in tqdm(stokes, desc='Making cubes', disable=(not verbose)):
+        cube = np.vstack([stoke_dict[stoke][band]['smdata'] * stoke_dict[stoke][band]['fac'] for band in bands])
+        freq_cube = np.concatenate([stoke_dict[stoke][band]['freq'] for band in bands]) * u.Hz
+        stoke_dict[stoke].update(
+            {
+                'cube': cube,
+                'freqs': freq_cube
+            }
+        )
+
+    # Show plots
+    if args.debug:
+        i_mom = np.nansum(stoke_dict['i']['cube'], axis=0)
+        idx = np.unravel_index(np.argmax(i_mom), i_mom.shape)
+        plt.figure()     
+        for stoke in stokes:
+            x = stoke_dict[stoke]['freqs']
+            y = stoke_dict[stoke]['cube'][:, idx[0], idx[1]]
+            plt.plot(x, y, '.', label=f'Stokes {stoke}') 
+        if stoke == 'i':
+            plt.xscale('log')
+            plt.yscale('log')
+        plt.xlabel('Frequency [Hz]')
+        plt.ylabel('Flux density [Jy/beam]')
+        plt.legend()
+        plt.show()
+
+        plt.figure()     
+        for stoke in stokes:
+            x = (299792458 / stoke_dict[stoke]['freqs'])**2
+            y = stoke_dict[stoke]['cube'][:, idx[0], idx[1]]
+            plt.plot(x, y, '.', label=f'Stokes {stoke}') 
+        plt.xlabel('$\lambda^2$ [m$^2$]')
+        plt.ylabel('Flux density [Jy/beam]')
+        plt.legend()
+        plt.show()
 
     if not args.dryrun:
         # Save the cubes
