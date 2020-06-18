@@ -22,6 +22,16 @@ from astropy.utils.exceptions import AstropyWarning
 warnings.simplefilter('ignore', category=AstropyWarning)
 
 
+class Error(Exception):
+    """Base class for other exceptions"""
+    pass
+
+
+class GridError(Error):
+    """Raised when grid is too coarse for the convolving beam"""
+    pass
+
+
 def round_up(n, decimals=0):
     multiplier = 10 ** decimals
     return np.ceil(n * multiplier) / multiplier
@@ -72,7 +82,7 @@ def getmaxbeam(file_dict, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=
         minor=round_up(cmn_beam.minor.to(u.arcsec), decimals=1),
         pa=round_up(cmn_beam.pa.to(u.deg), decimals=1)
     )
-    return cmn_beam
+    return cmn_beam, beams
 
 
 def writecube(data, beam, stoke, field, outdir, verbose=False):
@@ -150,16 +160,41 @@ def main(pool, args, verbose=False):
     )
 
     # Get common beam
-    if args.target is None:
-        new_beam = getmaxbeam(file_dict,
-                              tolerance=args.tolerance,
-                              nsamps=args.nsamps,
-                              epsilon=args.epsilon,
-                              verbose=verbose)
-    elif args.target is not None:
-        new_beam = Beam(major=args.target*u.arcsec,
-                        minor=args.target*u.arcsec,
-                        pa=0*u.deg)
+    big_beam, beams = getmaxbeam(file_dict,
+                                 tolerance=args.tolerance,
+                                 nsamps=args.nsamps,
+                                 epsilon=args.epsilon,
+                                 verbose=verbose)
+
+    bmaj = args.bmaj
+    bmin = args.bmin
+    bpa = args.bpa
+
+    # Set to largest
+    if bpa is None and bmin is None and bmaj is None:
+        bpa = big_beam.pa.to(u.deg)
+    else:
+        bpa = 0*u.deg
+    if bmaj is None:
+        bmaj = round_up(big_beam.major.to(u.arcsec))
+        bmaj = big_beam.major.to(u.arcsec)
+    elif bmaj*u.arcsec < round_up(big_beam.major.to(u.arcsec)):
+        raise Exception('Selected BMAJ is too small!')
+    else:
+        bmaj *= u.arcsec
+    if bmin is None:
+        bmin = round_up(big_beam.minor.to(u.arcsec))
+        bmin = big_beam.minor.to(u.arcsec)
+    elif bmin*u.arcsec < round_up(big_beam.minor.to(u.arcsec)):
+        raise Exception('Selected BMIN is too small!')
+    else:
+        bmin *= u.arcsec
+
+    new_beam = Beam(
+        bmaj,
+        bmin,
+        bpa
+    )
 
     if verbose:
         print('Common beam is', new_beam)
@@ -191,8 +226,24 @@ def main(pool, args, verbose=False):
                     }
                 )
 
-        # Regrid
         target_wcs = datadict[2100]['wcs']
+        target_header = datadict[2100]['head']
+        dx = target_header['CDELT1']*-1*u.deg
+        dy = target_header['CDELT2']*u.deg
+
+        # Check that convolving beam will be nyquist sampled
+        maj_diff = np.sqrt(new_beam.major**2 - beams.major**2).to(u.deg)
+        min_diff = np.sqrt(new_beam.minor**2 - beams.minor**2).to(u.deg)
+
+        for diff in [maj_diff, min_diff]:
+            for grid in [dx, dy]:
+                sampling = diff / grid
+                check = (diff / grid < 2)
+                if any(check):
+                    raise Exception(
+                        'Grid is too coarse. Please choose a larger target beam.')
+
+        # Regrid
         for band in tqdm(bands, desc='Regridding data', disable=(not verbose)):
             worker = partial(
                 rpj.reproject_exact,
@@ -222,11 +273,11 @@ def main(pool, args, verbose=False):
             )
 
         # Get scaling factors and convolution kernels
-        target_header = datadict[2100]['head']
         for band in tqdm(bands, desc='Computing scaling factors', disable=(not verbose)):
             con_beam = new_beam.deconvolve(datadict[band]['beam'])
             dx = target_header['CDELT1']*-1*u.deg
             dy = target_header['CDELT2']*u.deg
+
             fac, amp, outbmaj, outbmin, outbpa = au2.gauss_factor(
                 [
                     con_beam.major.to(u.arcsec).value,
@@ -298,8 +349,9 @@ def main(pool, args, verbose=False):
                 y = datadict[band]['fac'] * \
                     datadict[band]['smdata'][:, idx[0], idx[1]]
                 plt.plot(x, y, '.', label=f'Stokes {stoke} -- band {band}')
-            plt.xscale('log')
-            plt.yscale('log')
+            if stoke == 'i':
+                plt.xscale('log')
+                plt.yscale('log')
             plt.xlabel('Frequency [Hz]')
             plt.ylabel('Flux density [Jy/beam]')
             plt.legend()
@@ -307,8 +359,10 @@ def main(pool, args, verbose=False):
 
     # Make cubes
     for stoke in tqdm(stokes, desc='Making cubes', disable=(not verbose)):
-        cube = np.vstack([stoke_dict[stoke][band]['smdata'] * stoke_dict[stoke][band]['fac'] for band in bands])
-        freq_cube = np.concatenate([stoke_dict[stoke][band]['freq'] for band in bands]) * u.Hz
+        cube = np.vstack([stoke_dict[stoke][band]['smdata']
+                          * stoke_dict[stoke][band]['fac'] for band in bands])
+        freq_cube = np.concatenate(
+            [stoke_dict[stoke][band]['freq'] for band in bands]) * u.Hz
         stoke_dict[stoke].update(
             {
                 'cube': cube,
@@ -320,24 +374,22 @@ def main(pool, args, verbose=False):
     if args.debug:
         i_mom = np.nansum(stoke_dict['i']['cube'], axis=0)
         idx = np.unravel_index(np.argmax(i_mom), i_mom.shape)
-        plt.figure()     
+        plt.figure()
         for stoke in stokes:
             x = stoke_dict[stoke]['freqs']
             y = stoke_dict[stoke]['cube'][:, idx[0], idx[1]]
-            plt.plot(x, y, '.', label=f'Stokes {stoke}') 
-        if stoke == 'i':
-            plt.xscale('log')
-            plt.yscale('log')
+            plt.plot(x, y, '.', label=f'Stokes {stoke}')
+
         plt.xlabel('Frequency [Hz]')
         plt.ylabel('Flux density [Jy/beam]')
         plt.legend()
         plt.show()
 
-        plt.figure()     
+        plt.figure()
         for stoke in stokes:
             x = (299792458 / stoke_dict[stoke]['freqs'])**2
             y = stoke_dict[stoke]['cube'][:, idx[0], idx[1]]
-            plt.plot(x, y, '.', label=f'Stokes {stoke}') 
+            plt.plot(x, y, '.', label=f'Stokes {stoke}')
         plt.xlabel('$\lambda^2$ [m$^2$]')
         plt.ylabel('Flux density [Jy/beam]')
         plt.legend()
@@ -396,11 +448,25 @@ def cli():
         help='(Optional) Save cubes to different directory [datadir].')
 
     parser.add_argument(
-        '--target',
-        dest='target',
+        "--bmaj",
+        dest="bmaj",
         type=float,
         default=None,
-        help='Target resoltion (circular beam, BMAJ) in arcsec [None].')
+        help="BMAJ to convolve to [max BMAJ from given image(s)].")
+
+    parser.add_argument(
+        "--bmin",
+        dest="bmin",
+        type=float,
+        default=None,
+        help="BMIN to convolve to [max BMAJ from given image(s)].")
+
+    parser.add_argument(
+        "--bpa",
+        dest="bpa",
+        type=float,
+        default=None,
+        help="BPA to convolve to [0].")
 
     parser.add_argument(
         "-v",
