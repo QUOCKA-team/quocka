@@ -400,7 +400,7 @@ def cli():
         dest='target',
         type=float,
         default=None,
-        help='Target resoltion (circular beam, BMAJ) in arcmin [None].')
+        help='Target resoltion (circular beam, BMAJ) in arcsec [None].')
 
     parser.add_argument(
         "-v",
