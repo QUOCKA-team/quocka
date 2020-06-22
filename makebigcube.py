@@ -21,6 +21,16 @@ import warnings
 from astropy.utils.exceptions import AstropyWarning
 warnings.simplefilter('ignore', category=AstropyWarning)
 
+# Require reproject >= 0.7
+try:
+    assert float(rpj.__version__[0:3]) >= 0.7
+
+except AssertionError:
+    print('We require reproject version > 0.7')
+    print(f'Current version is {rpj.__version__}')
+    print('Please update reproject!')
+    quit()
+
 
 class Error(Exception):
     """Base class for other exceptions"""
@@ -58,8 +68,10 @@ def getmaxbeam(file_dict, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=
     beam_dict = {}
     beams = []
     for stoke in stokes:
-        for file in file_dict[stoke]:
+        for i, file in enumerate(file_dict[stoke]):
             header = fits.getheader(file, memmap=True)
+            if stoke == 'i' and i == 0:
+                target_header = header
             beam = Beam.from_fits_header(header)
             beams.append(beam)
     beams = Beams(
@@ -82,7 +94,48 @@ def getmaxbeam(file_dict, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=
         minor=round_up(cmn_beam.minor.to(u.arcsec), decimals=1),
         pa=round_up(cmn_beam.pa.to(u.deg), decimals=1)
     )
-    return cmn_beam, beams
+
+    dx = target_header['CDELT1']*-1*u.deg
+    dy = target_header['CDELT2']*u.deg
+    assert abs(dx) == abs(dy)
+    grid = dy
+    conbeams = [cmn_beam.deconvolve(beam) for beam in beams]
+
+    # Check that convolving beam will be nyquist sampled
+    min_samps = []
+    for b_idx, conbeam in enumerate(conbeams):
+        # Get maj, min, pa
+        samp = conbeam.minor / grid.to(u.arcsec)
+        if samp < 2:
+            min_samps.append([samp, b_idx])
+
+    if len(min_samps) > 0:
+        print('Adjusting common beam to be sampled by grid!')
+        worst_idx = np.argmin([samp[0] for samp in min_samps], axis=0)
+        samp_cor_fac, idx = 2 / \
+            min_samps[worst_idx][0], int(
+                min_samps[worst_idx][1])
+        conbeam = conbeams[idx]
+        major = conbeam.major
+        minor = conbeam.minor*samp_cor_fac
+        pa = conbeam.pa
+        # Check for small major!
+        if major < minor:
+            major = minor
+            pa = 0*u.deg
+        
+        cor_beam = Beam(major, minor, pa)
+        if verbose:
+            print('Smallest common beam is:', cmn_beam)
+        cmn_beam = beams[idx].convolve(cor_beam)
+        cmn_beam = Beam(
+            major=round_up(cmn_beam.major.to(u.arcsec), decimals=1),
+            minor=round_up(cmn_beam.minor.to(u.arcsec), decimals=1),
+            pa=round_up(cmn_beam.pa.to(u.deg), decimals=1)
+        )
+        if verbose:
+            print('Smallest common Nyquist sampled beam is:', cmn_beam)
+    return cmn_beam
 
 
 def writecube(data, beam, stoke, field, outdir, verbose=False):
@@ -160,11 +213,11 @@ def main(pool, args, verbose=False):
     )
 
     # Get common beam
-    big_beam, beams = getmaxbeam(file_dict,
-                                 tolerance=args.tolerance,
-                                 nsamps=args.nsamps,
-                                 epsilon=args.epsilon,
-                                 verbose=verbose)
+    big_beam = getmaxbeam(file_dict,
+                          tolerance=args.tolerance,
+                          nsamps=args.nsamps,
+                          epsilon=args.epsilon,
+                          verbose=verbose)
 
     bmaj = args.bmaj
     bmin = args.bmin
@@ -228,20 +281,6 @@ def main(pool, args, verbose=False):
 
         target_wcs = datadict[2100]['wcs']
         target_header = datadict[2100]['head']
-        dx = target_header['CDELT1']*-1*u.deg
-        dy = target_header['CDELT2']*u.deg
-
-        # Check that convolving beam will be nyquist sampled
-        maj_diff = np.sqrt(new_beam.major**2 - beams.major**2).to(u.deg)
-        min_diff = np.sqrt(new_beam.minor**2 - beams.minor**2).to(u.deg)
-
-        for diff in [maj_diff, min_diff]:
-            for grid in [dx, dy]:
-                sampling = diff / grid
-                check = (diff / grid < 2)
-                if any(check):
-                    raise Exception(
-                        'Grid is too coarse. Please choose a larger target beam.')
 
         # Regrid
         for band in tqdm(bands, desc='Regridding data', disable=(not verbose)):
@@ -452,21 +491,21 @@ def cli():
         dest="bmaj",
         type=float,
         default=None,
-        help="BMAJ to convolve to [max BMAJ from given image(s)].")
+        help="BMAJ (arcsec) to convolve to [max BMAJ from given image(s)].")
 
     parser.add_argument(
         "--bmin",
         dest="bmin",
         type=float,
         default=None,
-        help="BMIN to convolve to [max BMAJ from given image(s)].")
+        help="BMIN (arcsec) to convolve to [max BMAJ from given image(s)].")
 
     parser.add_argument(
         "--bpa",
         dest="bpa",
         type=float,
         default=None,
-        help="BPA to convolve to [0].")
+        help="BPA (deg) to convolve to [0].")
 
     parser.add_argument(
         "-v",

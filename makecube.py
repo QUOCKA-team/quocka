@@ -21,6 +21,7 @@ def round_up(n, decimals=0):
     multiplier = 10 ** decimals
     return np.ceil(n * multiplier) / multiplier
 
+
 def getmaxbeam(data_dict, band, cutoff=15*u.arcsec, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=False, debug=False):
     """Find common beam.
 
@@ -111,6 +112,46 @@ def getmaxbeam(data_dict, band, cutoff=15*u.arcsec, tolerance=0.0001, nsamps=200
         pa=round_up(cmn_beam.pa.to(u.deg), decimals=1)
     )
 
+    target_header = fits.getheader(data_dict[band]['i'][0], memmap=True)
+    dx = target_header['CDELT1']*-1*u.deg
+    dy = target_header['CDELT2']*u.deg
+    grid = dy
+    conbeams = [cmn_beam.deconvolve(beam) for beam in big_beams]
+
+    # Check that convolving beam will be nyquist sampled
+    min_samps = []
+    for b_idx, conbeam in enumerate(conbeams):
+        # Get maj, min, pa
+        samp = conbeam.minor / grid.to(u.arcsec)
+        if samp < 2:
+            min_samps.append([samp, b_idx])
+
+    if len(min_samps) > 0:
+        print('Adjusting common beam to be sampled by grid!')
+        worst_idx = np.argmin([samp[0] for samp in min_samps], axis=0)
+        samp_cor_fac, idx = 2 / \
+            min_samps[worst_idx][0], int(
+                min_samps[worst_idx][1])
+        conbeam = conbeams[idx]
+        major = conbeam.major
+        minor = conbeam.minor*samp_cor_fac
+        pa = conbeam.pa
+        # Check for small major!
+        if major < minor:
+            major = minor
+            pa = 0*u.deg
+
+        cor_beam = Beam(major, minor, pa)
+        if verbose:
+            print('Smallest common beam is:', cmn_beam)
+        cmn_beam = big_beams[idx].convolve(cor_beam)
+        cmn_beam = Beam(
+            major=round_up(cmn_beam.major.to(u.arcsec), decimals=1),
+            minor=round_up(cmn_beam.minor.to(u.arcsec), decimals=1),
+            pa=round_up(cmn_beam.pa.to(u.deg), decimals=1)
+        )
+        if verbose:
+            print('Smallest common Nyquist sampled beam is:', cmn_beam)
     if debug:
         from matplotlib.patches import Ellipse
         pixscale = 1*u.arcsec
@@ -362,6 +403,7 @@ def main(pool, args, verbose=False):
 
     if verbose:
         print('Done!')
+
 
 def cli():
     """Command-line interface
