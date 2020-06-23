@@ -47,6 +47,10 @@ def round_up(n, decimals=0):
     return np.ceil(n * multiplier) / multiplier
 
 
+def my_ceil(a, precision=0):
+    return np.round(a + 0.5 * 10**(-precision), precision)
+
+
 def getmaxbeam(file_dict, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=False):
     """Find common beam
 
@@ -90,11 +94,10 @@ def getmaxbeam(file_dict, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=
         cmn_beam = beams.common_beam(
             tolerance=tolerance*0.1, epsilon=epsilon, nsamps=nsamps)
     cmn_beam = Beam(
-        major=round_up(cmn_beam.major.to(u.arcsec), decimals=1),
-        minor=round_up(cmn_beam.minor.to(u.arcsec), decimals=1),
+        major=my_ceil(cmn_beam.major.to(u.arcsec).value, precision=1)*u.arcsec,
+        minor=my_ceil(cmn_beam.minor.to(u.arcsec).value, precision=1)*u.arcsec,
         pa=round_up(cmn_beam.pa.to(u.deg), decimals=1)
     )
-
     dx = target_header['CDELT1']*-1*u.deg
     dy = target_header['CDELT2']*u.deg
     assert abs(dx) == abs(dy)
@@ -123,7 +126,7 @@ def getmaxbeam(file_dict, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=
         if major < minor:
             major = minor
             pa = 0*u.deg
-        
+
         cor_beam = Beam(major, minor, pa)
         if verbose:
             print('Smallest common beam is:', cmn_beam)
@@ -212,6 +215,10 @@ def main(pool, args, verbose=False):
         }
     )
 
+    # Check files were found
+    for stoke in stokes:
+        if len(file_dict[stoke]) == 0:
+            raise Exception(f'No Stokes {stoke} files found!')
     # Get common beam
     big_beam = getmaxbeam(file_dict,
                           tolerance=args.tolerance,
