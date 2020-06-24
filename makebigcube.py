@@ -96,7 +96,7 @@ def getmaxbeam(file_dict, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=
     cmn_beam = Beam(
         major=my_ceil(cmn_beam.major.to(u.arcsec).value, precision=1)*u.arcsec,
         minor=my_ceil(cmn_beam.minor.to(u.arcsec).value, precision=1)*u.arcsec,
-        pa=round_up(cmn_beam.pa.to(u.deg), decimals=1)
+        pa=round_up(cmn_beam.pa.to(u.deg), decimals=2)
     )
     dx = target_header['CDELT1']*-1*u.deg
     dy = target_header['CDELT2']*u.deg
@@ -132,9 +132,9 @@ def getmaxbeam(file_dict, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=
             print('Smallest common beam is:', cmn_beam)
         cmn_beam = beams[idx].convolve(cor_beam)
         cmn_beam = Beam(
-            major=round_up(cmn_beam.major.to(u.arcsec), decimals=1),
-            minor=round_up(cmn_beam.minor.to(u.arcsec), decimals=1),
-            pa=round_up(cmn_beam.pa.to(u.deg), decimals=1)
+            major=my_ceil(cmn_beam.major.to(u.arcsec).value, precision=1)*u.arcsec,
+            minor=my_ceil(cmn_beam.minor.to(u.arcsec).value, precision=1)*u.arcsec,
+            pa=round_up(cmn_beam.pa.to(u.deg), decimals=2)
         )
         if verbose:
             print('Smallest common Nyquist sampled beam is:', cmn_beam)
