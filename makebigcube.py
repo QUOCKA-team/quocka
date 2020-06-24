@@ -94,8 +94,8 @@ def getmaxbeam(file_dict, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=
         cmn_beam = beams.common_beam(
             tolerance=tolerance*0.1, epsilon=epsilon, nsamps=nsamps)
     cmn_beam = Beam(
-        major=my_ceil(cmn_beam.major.to(u.arcsec).value, precision=1)*u.arcsec,
-        minor=my_ceil(cmn_beam.minor.to(u.arcsec).value, precision=1)*u.arcsec,
+        major=my_ceil(cmn_beam.major.to(u.arcsec).value, precision=0)*u.arcsec,
+        minor=my_ceil(cmn_beam.minor.to(u.arcsec).value, precision=0)*u.arcsec,
         pa=round_up(cmn_beam.pa.to(u.deg), decimals=2)
     )
     dx = target_header['CDELT1']*-1*u.deg
