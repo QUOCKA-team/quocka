@@ -17,6 +17,15 @@ from functools import partial
 from IPython import embed
 
 
+def round_up(n, decimals=0):
+    multiplier = 10 ** decimals
+    return np.ceil(n * multiplier) / multiplier
+
+
+def my_ceil(a, precision=0):
+    return np.round(a + 0.5 * 10**(-precision), precision)
+
+
 def getmaxbeam(data_dict, band, cutoff=15*u.arcsec, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=False, debug=False):
     """Find common beam.
 
@@ -101,6 +110,52 @@ def getmaxbeam(data_dict, band, cutoff=15*u.arcsec, tolerance=0.0001, nsamps=200
         cmn_beam = big_beams.common_beam(
             tolerance=tolerance*0.1, epsilon=epsilon, nsamps=nsamps)
 
+    cmn_beam = Beam(
+        major=my_ceil(cmn_beam.major.to(u.arcsec).value, precision=1)*u.arcsec,
+        minor=my_ceil(cmn_beam.minor.to(u.arcsec).value, precision=1)*u.arcsec,
+        pa=round_up(cmn_beam.pa.to(u.deg), decimals=2)
+    )
+
+    target_header = fits.getheader(data_dict[band]['i'][0], memmap=True)
+    dx = target_header['CDELT1']*-1*u.deg
+    dy = target_header['CDELT2']*u.deg
+    grid = dy
+    conbeams = [cmn_beam.deconvolve(beam) for beam in big_beams]
+
+    # Check that convolving beam will be nyquist sampled
+    min_samps = []
+    for b_idx, conbeam in enumerate(conbeams):
+        # Get maj, min, pa
+        samp = conbeam.minor / grid.to(u.arcsec)
+        if samp < 2:
+            min_samps.append([samp, b_idx])
+
+    if len(min_samps) > 0:
+        print('Adjusting common beam to be sampled by grid!')
+        worst_idx = np.argmin([samp[0] for samp in min_samps], axis=0)
+        samp_cor_fac, idx = 2 / \
+            min_samps[worst_idx][0], int(
+                min_samps[worst_idx][1])
+        conbeam = conbeams[idx]
+        major = conbeam.major
+        minor = conbeam.minor*samp_cor_fac
+        pa = conbeam.pa
+        # Check for small major!
+        if major < minor:
+            major = minor
+            pa = 0*u.deg
+
+        cor_beam = Beam(major, minor, pa)
+        if verbose:
+            print('Smallest common beam is:', cmn_beam)
+        cmn_beam = big_beams[idx].convolve(cor_beam)
+        cmn_beam = Beam(
+            major=my_ceil(cmn_beam.major.to(u.arcsec).value, precision=1)*u.arcsec,
+            minor=my_ceil(cmn_beam.minor.to(u.arcsec).value, precision=1)*u.arcsec,
+            pa=round_up(cmn_beam.pa.to(u.deg), decimals=2)
+        )
+        if verbose:
+            print('Smallest common Nyquist sampled beam is:', cmn_beam)
     if debug:
         from matplotlib.patches import Ellipse
         pixscale = 1*u.arcsec
@@ -292,6 +347,11 @@ def main(pool, args, verbose=False):
                         glob(f'{datadir}/{args.field}.{band}.*.{stoke}.cutout.fits'))
                 }
             )
+    # Check files were found
+    for band in bands:
+        for stoke in stokes:
+            if len(data_dict[band][stoke]) == 0:
+                raise Exception(f'No Band {band} Stokes {stoke} files found!')
     # Get common beams
     for band in tqdm(bands,
                      desc='Finding commmon beam per band',
@@ -352,6 +412,7 @@ def main(pool, args, verbose=False):
 
     if verbose:
         print('Done!')
+
 
 def cli():
     """Command-line interface

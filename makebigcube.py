@@ -1,19 +1,54 @@
 #!/usr/bin/env python
 """Make big QUOCKA cubes"""
 
+from IPython import embed
 import schwimmbad
 import sys
 from glob import glob
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 from radio_beam import Beam, Beams
 from radio_beam.utils import BeamError
 from astropy import units as u
 from astropy.io import fits
+from astropy.wcs import WCS
 import au2
 import scipy.signal
 import numpy as np
 from functools import partial
-from IPython import embed
+import reproject as rpj
+import warnings
+from astropy.utils.exceptions import AstropyWarning
+warnings.simplefilter('ignore', category=AstropyWarning)
+
+# Require reproject >= 0.7
+try:
+    assert float(rpj.__version__[0:3]) >= 0.7
+
+except AssertionError:
+    print('We require reproject version > 0.7')
+    print(f'Current version is {rpj.__version__}')
+    print('Please update reproject!')
+    quit()
+
+
+class Error(Exception):
+    """Base class for other exceptions"""
+    pass
+
+
+class GridError(Error):
+    """Raised when grid is too coarse for the convolving beam"""
+    pass
+
+
+def round_up(n, decimals=0):
+    multiplier = 10 ** decimals
+    return np.ceil(n * multiplier) / multiplier
+
+
+def my_ceil(a, precision=0):
+    return np.round(a + 0.5 * 10**(-precision), precision)
 
 
 def getmaxbeam(file_dict, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=False):
@@ -37,8 +72,10 @@ def getmaxbeam(file_dict, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=
     beam_dict = {}
     beams = []
     for stoke in stokes:
-        for file in file_dict[stoke]:
+        for i, file in enumerate(file_dict[stoke]):
             header = fits.getheader(file, memmap=True)
+            if stoke == 'i' and i == 0:
+                target_header = header
             beam = Beam.from_fits_header(header)
             beams.append(beam)
     beams = Beams(
@@ -56,123 +93,52 @@ def getmaxbeam(file_dict, tolerance=0.0001, nsamps=200, epsilon=0.0005, verbose=
             print("Trying again with smaller tolerance")
         cmn_beam = beams.common_beam(
             tolerance=tolerance*0.1, epsilon=epsilon, nsamps=nsamps)
-    return cmn_beam
-
-
-def getdata(file_dict, new_beam, stoke, verbose=False):
-    """Get data from band cubes
-
-    Arguments:
-        file_dict {dict} -- Filenames for each bandcube
-        new_beam {Beam} -- Target common resolution
-        stoke {str} -- Stokes parameter
-
-    Keyword Arguments:
-        verbose {bool} -- Verbose output (default: {False})
-
-    Returns:
-        data {dict} -- Smoothed data and metadata
-    """
-    freqs = []
-    for freqfile in file_dict['freqs']:
-        freqs.append(np.loadtxt(freqfile))
-    freqs = np.hstack(freqs)*u.Hz
-    sort_idx = freqs.argsort()
-    freqs_sorted = freqs[sort_idx]
-
-    datacube = []
-    beams = []
-
-    for file in file_dict[stoke]:
-        data = fits.getdata(file)
-        datacube.append(data)
-        header = fits.getheader(file, memmap=True)
-        beam = Beam.from_fits_header(header)
-        for i in range(data.shape[0]):
-            beams.append(beam)
-
-    beams_sorted = [beams[idx] for idx in sort_idx]
-    beams_sorted = Beams(
-        [beam.major.value for beam in beams_sorted]*u.deg,
-        [beam.minor.value for beam in beams_sorted]*u.deg,
-        [beam.pa.value for beam in beams_sorted]*u.deg
+    cmn_beam = Beam(
+        major=my_ceil(cmn_beam.major.to(u.arcsec).value, precision=0)*u.arcsec,
+        minor=my_ceil(cmn_beam.minor.to(u.arcsec).value, precision=0)*u.arcsec,
+        pa=round_up(cmn_beam.pa.to(u.deg), decimals=2)
     )
+    dx = target_header['CDELT1']*-1*u.deg
+    dy = target_header['CDELT2']*u.deg
+    assert abs(dx) == abs(dy)
+    grid = dy
+    conbeams = [cmn_beam.deconvolve(beam) for beam in beams]
 
-    datacube = np.vstack(datacube)
+    # Check that convolving beam will be nyquist sampled
+    min_samps = []
+    for b_idx, conbeam in enumerate(conbeams):
+        # Get maj, min, pa
+        samp = conbeam.minor / grid.to(u.arcsec)
+        if samp < 2:
+            min_samps.append([samp, b_idx])
 
-    datacube_sorted = datacube[sort_idx]
+    if len(min_samps) > 0:
+        print('Adjusting common beam to be sampled by grid!')
+        worst_idx = np.argmin([samp[0] for samp in min_samps], axis=0)
+        samp_cor_fac, idx = 2 / \
+            min_samps[worst_idx][0], int(
+                min_samps[worst_idx][1])
+        conbeam = conbeams[idx]
+        major = conbeam.major
+        minor = conbeam.minor*samp_cor_fac
+        pa = conbeam.pa
+        # Check for small major!
+        if major < minor:
+            major = minor
+            pa = 0*u.deg
 
-    with fits.open(file_dict[stoke][0], memmap=True, mode='denywrite') as hdu:
-        header = hdu[0].header
-        dx = header['CDELT1']*-1*u.deg
-        dy = header['CDELT2']*u.deg
-
-    dx_lst = [dx for i in range(len(freqs_sorted))]
-    dy_lst = [dy for i in range(len(freqs_sorted))]
-    data = {
-        "cube": datacube_sorted,
-        "freqs": freqs_sorted,
-        "beams": beams_sorted,
-        "dx": dx_lst,
-        "dy": dy_lst,
-        "header": header
-    }
-    return data
-
-
-def smooth(inps, new_beam, verbose=False):
-    """Smooth cubes to common beam
-
-    Arguments:
-        inps {tuple} -- Inputs
-            image {array} -- image plane from cube
-            dx {Quantity} -- Pixel scale in x-direction
-            dy {Quantity} -- Pixel scale in y-direction
-            old_beam {Beam} -- Current resolution of image
-        new_beam {Beam} -- Target common resolution
-
-    Keyword Arguments:
-        verbose {bool} -- Verbose output (default: {False})
-
-    Returns:
-        newim {array} -- Smoothed image plane
-    """
-    image, dx, dy, old_beam = inps
-    if new_beam == old_beam:
-        return image
-    else:
-        con_beam = new_beam.deconvolve(old_beam)
-        fac, amp, outbmaj, outbmin, outbpa = au2.gauss_factor(
-            [
-                con_beam.major.to(u.arcsec).value,
-                con_beam.minor.to(u.arcsec).value,
-                con_beam.pa.to(u.deg).value
-            ],
-            beamOrig=[
-                old_beam.major.to(u.arcsec).value,
-                old_beam.minor.to(u.arcsec).value,
-                old_beam.pa.to(u.deg).value
-            ],
-            dx1=dx.to(u.arcsec).value,
-            dy1=dy.to(u.arcsec).value
+        cor_beam = Beam(major, minor, pa)
+        if verbose:
+            print('Smallest common beam is:', cmn_beam)
+        cmn_beam = beams[idx].convolve(cor_beam)
+        cmn_beam = Beam(
+            major=my_ceil(cmn_beam.major.to(u.arcsec).value, precision=1)*u.arcsec,
+            minor=my_ceil(cmn_beam.minor.to(u.arcsec).value, precision=1)*u.arcsec,
+            pa=round_up(cmn_beam.pa.to(u.deg), decimals=2)
         )
-
         if verbose:
-            print(f'Smoothing so beam is', new_beam)
-            print(f'Using convolving beam', con_beam)
-
-        pix_scale = dy
-
-        gauss_kern = con_beam.as_kernel(pix_scale)
-
-        conbm1 = gauss_kern.array/gauss_kern.array.max()
-
-        newim = scipy.signal.convolve(image, conbm1, mode='same')
-
-        newim *= fac
-        if verbose:
-            sys.stdout.flush()
-        return newim
+            print('Smallest common Nyquist sampled beam is:', cmn_beam)
+    return cmn_beam
 
 
 def writecube(data, beam, stoke, field, outdir, verbose=False):
@@ -193,13 +159,13 @@ def writecube(data, beam, stoke, field, outdir, verbose=False):
 
     # Make header
     d_freq = np.nanmedian(np.diff(data['freqs']))
-    header = data['header']
+    header = data['target header']
     header = beam.attach_to_header(header)
     header['CRVAL3'] = data['freqs'][0].to_value()
     header['CDELT3'] = d_freq.to_value()
 
     # Save the data
-    fits.writeto(f'{outdir}/{outfile}', data['smooth cube'],
+    fits.writeto(f'{outdir}/{outfile}', data['cube'],
                  header=header, overwrite=True)
     if verbose:
         print("Saved cube to", f'{outdir}/{outfile}')
@@ -214,9 +180,12 @@ def writecube(data, beam, stoke, field, outdir, verbose=False):
 def main(pool, args, verbose=False):
     """Main script
     """
+    # Set up variables
     bands = [2100, 5500, 7500]
     stokes = ['i', 'q', 'u', 'v']
     datadir = args.datadir
+    field = args.field
+
     if datadir is not None:
         if datadir[-1] == '/':
             datadir = datadir[:-1]
@@ -234,75 +203,257 @@ def main(pool, args, verbose=False):
         file_dict.update(
             {
                 stoke: sorted(
-                    glob(f'{datadir}/{args.field}.*.{stoke}.cutout.bandcube.fits')
+                    glob(f'{datadir}/{field}.*.{stoke}.cutout.bandcube.fits')
                 )
             }
         )
     file_dict.update(
         {
             'freqs': sorted(
-                glob(f'{datadir}/{args.field}.*.bandcube.frequencies.txt')
+                glob(f'{datadir}/{field}.*.bandcube.frequencies.txt')
             )
         }
     )
-    if args.target is None:
-        new_beam = getmaxbeam(file_dict,
-                            tolerance=args.tolerance,
-                            nsamps=args.nsamps,
-                            epsilon=args.epsilon,
-                            verbose=verbose)
-    elif args.target is not None:
-        new_beam = Beam(major=args.target*u.arcsec,
-                        minor=args.target*u.arcsec,
-                        pa=0*u.deg)
+
+    # Check files were found
+    for stoke in stokes:
+        if len(file_dict[stoke]) == 0:
+            raise Exception(f'No Stokes {stoke} files found!')
+    # Get common beam
+    big_beam = getmaxbeam(file_dict,
+                          tolerance=args.tolerance,
+                          nsamps=args.nsamps,
+                          epsilon=args.epsilon,
+                          verbose=verbose)
+
+    bmaj = args.bmaj
+    bmin = args.bmin
+    bpa = args.bpa
+
+    # Set to largest
+    if bpa is None and bmin is None and bmaj is None:
+        bpa = big_beam.pa.to(u.deg)
+    else:
+        bpa = 0*u.deg
+    if bmaj is None:
+        bmaj = round_up(big_beam.major.to(u.arcsec))
+        bmaj = big_beam.major.to(u.arcsec)
+    elif bmaj*u.arcsec < round_up(big_beam.major.to(u.arcsec)):
+        raise Exception('Selected BMAJ is too small!')
+    else:
+        bmaj *= u.arcsec
+    if bmin is None:
+        bmin = round_up(big_beam.minor.to(u.arcsec))
+        bmin = big_beam.minor.to(u.arcsec)
+    elif bmin*u.arcsec < round_up(big_beam.minor.to(u.arcsec)):
+        raise Exception('Selected BMIN is too small!')
+    else:
+        bmin *= u.arcsec
+
+    new_beam = Beam(
+        bmaj,
+        bmin,
+        bpa
+    )
+
     if verbose:
         print('Common beam is', new_beam)
-    # Get data from files
-    data_dict = {stoke: {} for stoke in stokes}
-    for stoke in tqdm(stokes, desc='Getting data', disable=(not verbose)):
-        data = getdata(file_dict,
-                       new_beam,
-                       stoke,
-                       verbose=verbose)
-        data_dict[stoke].update(data)
 
-    # Smooth to common beam
-    for stoke in tqdm(stokes, desc='Smoothing data', disable=(not verbose)):
-        smooth_partial = partial(smooth,
-                                 new_beam=new_beam,
-                                 verbose=False
-                                 )
-        data = list(
-            tqdm(
-                pool.imap(smooth_partial,
-                          zip(data_dict[stoke]['cube'],
-                              data_dict[stoke]['dx'],
-                              data_dict[stoke]['dy'],
-                              data_dict[stoke]['beams'])
-                          ),
-                total=len(data_dict[stoke]['freqs']),
-                disable=(not verbose),
-                desc='Smoothing channels'
+    # Start computation - work on each Stokes
+    stoke_dict = {}
+    for stoke in stokes:
+        print(f'Working on Stokes {stoke}...')
+        datadict = {}
+
+        # Get data from files
+        for band in tqdm(bands, desc='Reading data', disable=(not verbose)):
+            with fits.open(f'{datadir}/{field}.{band}.{stoke}.cutout.bandcube.fits',
+                           memmap=True,
+                           mode='denywrite') as hdulist:
+                data = hdulist[0].data
+                head = hdulist[0].header
+                freq = np.loadtxt(
+                    f'{datadir}/{field}.{band}.bandcube.frequencies.txt')
+                datadict.update(
+                    {
+                        band: {
+                            'data': data,
+                            'head': head,
+                            'wcs': WCS(head),
+                            'freq': freq,
+                            'beam': Beam.from_fits_header(head)
+                        }
+                    }
+                )
+
+        target_wcs = datadict[2100]['wcs']
+        target_header = datadict[2100]['head']
+
+        # Regrid
+        for band in tqdm(bands, desc='Regridding data', disable=(not verbose)):
+            worker = partial(
+                rpj.reproject_exact,
+                output_projection=target_wcs.celestial,
+                shape_out=datadict[2100]['data'][0].shape,
+                parallel=False,
+                return_footprint=False
             )
-        )
-        data = np.array(data)
-        data_dict[stoke].update(
+            input_wcs = datadict[band]['wcs'].celestial
+            inputs = [(image, input_wcs) for image in datadict[band]['data']]
+            newcube = np.zeros_like(datadict[band]['data'])*np.nan
+            out = list(
+                tqdm(
+                    pool.imap(
+                        worker, inputs
+                    ),
+                    total=len(datadict[band]['data']),
+                    desc='Regridding channels',
+                    disable=(not verbose)
+                )
+            )
+            newcube[:] = out[:]
+            datadict[band].update(
+                {
+                    "newdata": newcube
+                }
+            )
+
+        # Get scaling factors and convolution kernels
+        for band in tqdm(bands, desc='Computing scaling factors', disable=(not verbose)):
+            con_beam = new_beam.deconvolve(datadict[band]['beam'])
+            dx = target_header['CDELT1']*-1*u.deg
+            dy = target_header['CDELT2']*u.deg
+
+            fac, amp, outbmaj, outbmin, outbpa = au2.gauss_factor(
+                [
+                    con_beam.major.to(u.arcsec).value,
+                    con_beam.minor.to(u.arcsec).value,
+                    con_beam.pa.to(u.deg).value
+                ],
+                beamOrig=[
+                    datadict[band]['beam'].major.to(u.arcsec).value,
+                    datadict[band]['beam'].minor.to(u.arcsec).value,
+                    datadict[band]['beam'].pa.to(u.deg).value
+                ],
+                dx1=dx.to(u.arcsec).value,
+                dy1=dy.to(u.arcsec).value
+            )
+            pix_scale = dy
+            gauss_kern = con_beam.as_kernel(pix_scale)
+            conbm = gauss_kern.array/gauss_kern.array.max()
+            datadict[band].update(
+                {
+                    'conbeam': conbm,
+                    'fac': fac,
+                    'target header': target_header
+                }
+            )
+            datadict.update(
+                {
+                    'target header': target_header
+                }
+            )
+
+        # Convolve data
+        for band in tqdm(bands, desc='Smoothing data', disable=(not verbose)):
+            smooth = partial(
+                scipy.signal.convolve,
+                in2=datadict[band]['conbeam'],
+                mode='same'
+            )
+            sm_data = np.zeros_like(datadict[band]['newdata'])*np.nan
+            cube = np.copy(datadict[band]['newdata'])
+            cube[~np.isfinite(cube)] = 0
+            out = list(tqdm(
+                pool.imap(
+                    smooth, cube
+                ),
+                total=len(datadict[band]['newdata']),
+                desc='Smoothing channels',
+                disable=(not verbose)
+            ))
+            sm_data[:] = out[:]
+            sm_data[~np.isfinite(cube)] = np.nan
+            datadict[band].update(
+                {
+                    'smdata': sm_data,
+                }
+            )
+        stoke_dict.update(
             {
-                "smooth cube": data
+                stoke: datadict
             }
         )
+
+        # Show plots
+        if args.debug:
+            plt.figure()
+            i_mom = np.nansum(datadict[2100]['smdata'], axis=0)
+            idx = np.unravel_index(np.argmax(i_mom), i_mom.shape)
+            for band in bands:
+                x = datadict[band]['freq']
+                y = datadict[band]['fac'] * \
+                    datadict[band]['smdata'][:, idx[0], idx[1]]
+                plt.plot(x, y, '.', label=f'Stokes {stoke} -- band {band}')
+            if stoke == 'i':
+                plt.xscale('log')
+                plt.yscale('log')
+            plt.xlabel('Frequency [Hz]')
+            plt.ylabel('Flux density [Jy/beam]')
+            plt.legend()
+            plt.show()
+
+    # Make cubes
+    for stoke in tqdm(stokes, desc='Making cubes', disable=(not verbose)):
+        cube = np.vstack([stoke_dict[stoke][band]['smdata']
+                          * stoke_dict[stoke][band]['fac'] for band in bands])
+        freq_cube = np.concatenate(
+            [stoke_dict[stoke][band]['freq'] for band in bands]) * u.Hz
+        stoke_dict[stoke].update(
+            {
+                'cube': cube,
+                'freqs': freq_cube
+            }
+        )
+
+    # Show plots
+    if args.debug:
+        i_mom = np.nansum(stoke_dict['i']['cube'], axis=0)
+        idx = np.unravel_index(np.argmax(i_mom), i_mom.shape)
+        plt.figure()
+        for stoke in stokes:
+            x = stoke_dict[stoke]['freqs']
+            y = stoke_dict[stoke]['cube'][:, idx[0], idx[1]]
+            plt.plot(x, y, '.', label=f'Stokes {stoke}')
+
+        plt.xlabel('Frequency [Hz]')
+        plt.ylabel('Flux density [Jy/beam]')
+        plt.legend()
+        plt.show()
+
+        plt.figure()
+        for stoke in stokes:
+            x = (299792458 / stoke_dict[stoke]['freqs'])**2
+            y = stoke_dict[stoke]['cube'][:, idx[0], idx[1]]
+            plt.plot(x, y, '.', label=f'Stokes {stoke}')
+        plt.xlabel('$\lambda^2$ [m$^2$]')
+        plt.ylabel('Flux density [Jy/beam]')
+        plt.legend()
+        plt.show()
+
     if not args.dryrun:
         # Save the cubes
         for stoke in tqdm(stokes, desc='Writing cubes', disable=(not verbose)):
-            writecube(data_dict[stoke],
+            writecube(stoke_dict[stoke],
                       new_beam,
                       stoke,
-                      args.field,
+                      field,
                       outdir,
                       verbose=verbose)
 
     if verbose:
         print('Done!')
+
 
 def cli():
     """Command-line interface
@@ -343,11 +494,25 @@ def cli():
         help='(Optional) Save cubes to different directory [datadir].')
 
     parser.add_argument(
-        '--target',
-        dest='target',
+        "--bmaj",
+        dest="bmaj",
         type=float,
         default=None,
-        help='Target resoltion (circular beam, BMAJ) in arcmin [None].')
+        help="BMAJ (arcsec) to convolve to [max BMAJ from given image(s)].")
+
+    parser.add_argument(
+        "--bmin",
+        dest="bmin",
+        type=float,
+        default=None,
+        help="BMIN (arcsec) to convolve to [max BMAJ from given image(s)].")
+
+    parser.add_argument(
+        "--bpa",
+        dest="bpa",
+        type=float,
+        default=None,
+        help="BPA (deg) to convolve to [0].")
 
     parser.add_argument(
         "-v",
@@ -362,6 +527,12 @@ def cli():
         dest="dryrun",
         action="store_true",
         help="Compute common beam and stop [False].")
+
+    parser.add_argument(
+        "--debug",
+        dest="debug",
+        action="store_true",
+        help="Show debugging plots [False].")
 
     parser.add_argument(
         "-t",
