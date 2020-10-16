@@ -10,17 +10,20 @@ Tools for simulating QUOCKA data
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from RMtools_1D import do_RMsynth_1D, do_RMclean_1D
 
 C = 299792458.  # m/s
 
 
 class RealSource:
     """Store data from a real QUOCKA source.
-    """    
+    """
 
     def __init__(self):
         self.data = {}
         self.i_fit = None
+        self.mDict, self.aDict = {}, {}
+        self.mDict_cl, self.aDict_cl = {}, {}
 
     def read_data(self, filename, reformatted=False):
         """Read data from QUOCKA source file.
@@ -88,7 +91,7 @@ class RealSource:
 
         Returns:
             list: Polyfit values.
-        """        
+        """
         i_fit = np.polyfit(np.log10(self.data['freq']),
                            np.log10(self.data['I']),
                            order
@@ -114,10 +117,117 @@ class RealSource:
         self.i_fit = i_fit
         return i_fit
 
+    def run_rmsynth(self,
+                    polyOrd=3,
+                    phiMax_radm2=None,
+                    dPhi_radm2=None,
+                    nSamples=10.0,
+                    weightType='variance',
+                    fitRMSF=False,
+                    noStokesI=False,
+                    phiNoise_radm2=1000000.0,
+                    nBits=32,
+                    showPlots=False,
+                    debug=False,
+                    verbose=False,
+                    log=print,
+                    units='Jy/beam',
+                    ):
+        """
+        Run RM synthesis on 1D data.
+
+        Kwargs:
+            polyOrd (int): Order of polynomial to fit to Stokes I spectrum.
+            phiMax_radm2 (float): Maximum absolute Faraday depth (rad/m^2).
+            dPhi_radm2 (float): Faraday depth channel size (rad/m^2).
+            nSamples (float): Number of samples across the RMSF.
+            weightType (str): Can be "variance" or "uniform"
+                "variance" -- Weight by uncertainty in Q and U.
+                "uniform" -- Weight uniformly (i.e. with 1s)
+            fitRMSF (bool): Fit a Gaussian to the RMSF?
+            noStokesI (bool: Is Stokes I data provided?
+            phiNoise_radm2 (float): ????
+            nBits (int): Precision of floating point numbers.
+            showPlots (bool): Show plots?
+            debug (bool): Turn on debugging messages & plots?
+            verbose (bool): Verbosity.
+            log (function): Which logging function to use.
+            units (str): Units of data.
+
+        Returns:
+            mDict (dict): Summary of RM synthesis results.
+            aDict (dict): Data output by RM synthesis.
+        """
+        data = [
+            self.data['freq'],
+            self.data['I'],
+            self.data['Q'],
+            self.data['U'],
+            self.data['Ierr'],
+            self.data['Qerr'],
+            self.data['Uerr'],
+        ]
+        mDict, aDict = do_RMsynth_1D.run_rmsynth(
+            data,
+            polyOrd=polyOrd,
+            phiMax_radm2=phiMax_radm2,
+            dPhi_radm2=dPhi_radm2,
+            nSamples=nSamples,
+            weightType=weightType,
+            fitRMSF=fitRMSF,
+            noStokesI=noStokesI,
+            phiNoise_radm2=phiNoise_radm2,
+            nBits=nBits,
+            showPlots=showPlots,
+            debug=debug,
+            verbose=verbose,
+            log=log,
+            units=units,
+        )
+        self.mDict, self.aDict = mDict, aDict
+
+    def run_rmclean(self,
+                    cutoff,
+                    maxIter=1000,
+                    gain=0.1,
+                    nBits=32,
+                    showPlots=False,
+                    verbose=False,
+                    log=print,
+                    ):
+        """
+        Run RM-CLEAN on a complex FDF spectrum given a RMSF.
+
+        Args:
+            cutoff (float): CLEAN cutoff in flux units
+
+        Kwargs:
+            maxIter (int): Maximum number of CLEAN iterations per pixel.
+            gain (float): CLEAN loop gain.
+            nBits (int): Precision of floating point numbers.
+            showPlots (bool): Show plots?
+            verbose (bool): Verbosity.
+            log (function): Which logging function to use.
+        """
+        mDict_cl, aDict_cl = do_RMclean_1D.run_rmclean(
+            self.mDict,
+            self.aDict,
+            cutoff=cutoff,
+            maxIter=maxIter,
+            gain=gain,
+            nBits=nBits,
+            showPlots=showPlots,
+            verbose=verbose,
+            log=log
+        )
+
+        self.mDict_cl, self.aDict_cl = mDict_cl, aDict_cl
+
 
 class SimulatedSource:
     """Generate a simulated QUOCKA source
-    """    
+    """
+
     def __init__(self,
                  template=None,
                  freq=None,
@@ -142,7 +252,7 @@ class SimulatedSource:
         Raises:
             ValueError: If no template or frequency is provided.
             ValueError: If a template and frequency are provided.
-        """                
+        """
         self.data = {}
         self.model = {}
         self.model['I'] = {}
@@ -151,6 +261,8 @@ class SimulatedSource:
         self.model_fdf = {}
         self.model_fdf['phi'] = []
         self.model_fdf['data'] = []
+        self.mDict, self.aDict = {}, {}
+        self.mDict_cl, self.aDict_cl = {}, {}
         if template is None and freq is None:
             print('You must either provide a template or specify the frequencies to use')
             raise ValueError
@@ -213,7 +325,7 @@ class SimulatedSource:
 
         Returns:
             [type]: [description]
-        """        
+        """
         # TODO: This needs a way to combine models (not just data)
         # TODO: Also deal with noise and noisestd somehow!
         lm = len(self.data['freq'] == y.data['freq'])
@@ -243,7 +355,7 @@ class SimulatedSource:
 
     def set_noise(self, **kwargs):
         """[summary]
-        """        
+        """
         for key, value in list(kwargs.items()):
             if key == 'inoise':
                 self.noise['I'] = value
@@ -266,7 +378,7 @@ class SimulatedSource:
         Args:
             filename (str): Output file name.
             reformatted (bool, optional): Use formatted format. Defaults to False.
-        """        
+        """
         if reformatted:
             datapack = np.zeros((len(self.data['freq']), 7))
             datapack[:, 0] = self.data['freq']
@@ -293,7 +405,7 @@ class SimulatedSource:
         Args:
             pvals (list): Values for polyfit.
             log (bool, optional): Create spectrum in log-space. Defaults to True.
-        """        
+        """
         if log:
             values = np.polyval(pvals, np.log10(self.data['freq']))
             nl = 10.**values
@@ -313,7 +425,7 @@ class SimulatedSource:
             rm (float): Rotation Measure.
             chi0 (float): Polarisation angle.
             verbose (bool, optional): Print out info. Defaults to False.
-        """        
+        """
         if verbose:
             print(('Polarization fraction is', pfrac))
             print(('Intrinsic pol angle is', chi0, 'deg'))
@@ -336,7 +448,7 @@ class SimulatedSource:
             R (float): Faraday dpeth.
             rm (float): Rotation Measure.
             chi0 (float): Intrinsic polarisation angle.
-        """        
+        """
         print(('Polarization fraction is', pfrac))
         print(('Intrinsic pol angle is', chi0, 'deg'))
         chi0 *= np.pi/180.
@@ -386,7 +498,7 @@ class SimulatedSource:
             sig (float): Faraday dispersion.
             rm (float): Rotation Measure.
             chi0 (float): Intrinsic polarisation anlge.
-        """        
+        """
         print(('Polarization fraction is', pfrac))
         print(('Intrinsic pol angle is', chi0, 'deg'))
         chi0 *= np.pi/180.
@@ -423,7 +535,7 @@ class SimulatedSource:
 
         Args:
             phi (array-like): Array of Faraday depths.
-        """        
+        """
         model_fdf = np.zeros(phi.shape, dtype=np.complex)
         stokesI = np.zeros(phi.shape)
         glsq = np.arange(-1000, 1000.0005, 0.001)
@@ -491,7 +603,7 @@ class SimulatedSource:
 
         Raises:
             RuntimeError: If FDF model has not been generated.
-        """        
+        """
         # check if model FDF exists
         if len(self.model_fdf['phi']) == 0:
             print('First you need to generate the model FDF with generate_model_fdf()')
@@ -514,7 +626,7 @@ class SimulatedSource:
 
     def apply_noise(self):
         """Add noise to model I, Q, and U
-        """        
+        """
         for stokes in ['I', 'Q', 'U']:
             self.data[stokes+'obs'] = self.data[stokes] + self.noise[stokes] * \
                 np.random.standard_normal(self.data[stokes].shape)
@@ -527,7 +639,7 @@ class SimulatedSource:
 
         Args:
             pltfile (str, optional): Outfile to save plot. Defaults to None.
-        """        
+        """
         plt.figure(figsize=(14, 12), facecolor='w')
         plt.subplot(221)
         plt.errorbar(self.data['freq'], self.data['Iobs'],
@@ -565,3 +677,109 @@ class SimulatedSource:
         plt.ylabel('Pol angle')
         if pltfile is not None:
             plt.savefig(pltfile, bbox_inches='tight', dpi=200)
+
+    def run_rmsynth(self,
+                    polyOrd=3,
+                    phiMax_radm2=None,
+                    dPhi_radm2=None,
+                    nSamples=10.0,
+                    weightType='variance',
+                    fitRMSF=False,
+                    noStokesI=False,
+                    phiNoise_radm2=1000000.0,
+                    nBits=32,
+                    showPlots=False,
+                    debug=False,
+                    verbose=False,
+                    log=print,
+                    units='Jy/beam',
+                    ):
+        """
+        Run RM synthesis on 1D data.
+
+        Kwargs:
+            polyOrd (int): Order of polynomial to fit to Stokes I spectrum.
+            phiMax_radm2 (float): Maximum absolute Faraday depth (rad/m^2).
+            dPhi_radm2 (float): Faraday depth channel size (rad/m^2).
+            nSamples (float): Number of samples across the RMSF.
+            weightType (str): Can be "variance" or "uniform"
+                "variance" -- Weight by uncertainty in Q and U.
+                "uniform" -- Weight uniformly (i.e. with 1s)
+            fitRMSF (bool): Fit a Gaussian to the RMSF?
+            noStokesI (bool: Is Stokes I data provided?
+            phiNoise_radm2 (float): ????
+            nBits (int): Precision of floating point numbers.
+            showPlots (bool): Show plots?
+            debug (bool): Turn on debugging messages & plots?
+            verbose (bool): Verbosity.
+            log (function): Which logging function to use.
+            units (str): Units of data.
+
+        Returns:
+            mDict (dict): Summary of RM synthesis results.
+            aDict (dict): Data output by RM synthesis.
+        """
+        data = [
+            self.data['freq'],
+            self.data['Iobs'],
+            self.data['Qobs'],
+            self.data['Uobs'],
+            self.data['Ierr'],
+            self.data['Qerr'],
+            self.data['Uerr'],
+        ]
+        mDict, aDict = do_RMsynth_1D.run_rmsynth(
+            data,
+            polyOrd=polyOrd,
+            phiMax_radm2=phiMax_radm2,
+            dPhi_radm2=dPhi_radm2,
+            nSamples=nSamples,
+            weightType=weightType,
+            fitRMSF=fitRMSF,
+            noStokesI=noStokesI,
+            phiNoise_radm2=phiNoise_radm2,
+            nBits=nBits,
+            showPlots=showPlots,
+            debug=debug,
+            verbose=verbose,
+            log=log,
+            units=units,
+        )
+        self.mDict, self.aDict = mDict, aDict
+
+    def run_rmclean(self,
+                    cutoff,
+                    maxIter=1000,
+                    gain=0.1,
+                    nBits=32,
+                    showPlots=False,
+                    verbose=False,
+                    log=print,
+                    ):
+        """
+        Run RM-CLEAN on a complex FDF spectrum given a RMSF.
+
+        Args:
+            cutoff (float): CLEAN cutoff in flux units
+
+        Kwargs:
+            maxIter (int): Maximum number of CLEAN iterations per pixel.
+            gain (float): CLEAN loop gain.
+            nBits (int): Precision of floating point numbers.
+            showPlots (bool): Show plots?
+            verbose (bool): Verbosity.
+            log (function): Which logging function to use.
+        """
+        mDict_cl, aDict_cl = do_RMclean_1D.run_rmclean(
+            self.mDict,
+            self.aDict,
+            cutoff=cutoff,
+            maxIter=maxIter,
+            gain=gain,
+            nBits=nBits,
+            showPlots=showPlots,
+            verbose=verbose,
+            log=log
+        )
+
+        self.mDict_cl, self.aDict_cl = mDict_cl, aDict_cl
