@@ -26,6 +26,9 @@ class RealSource:
         self.mDict, self.aDict = {}, {}
         self.mDict_cl, self.aDict_cl = {}, {}
 
+    def copy(self):
+        return copy.deepcopy(self)
+
     def read_data(self, filename, reformatted=False):
         """Read data from QUOCKA source file.
 
@@ -78,7 +81,7 @@ class RealSource:
             for k in list(self.data.keys()):
                 self.data[k] = self.data[k][ind]
         else:
-            subset = copy.deepcopy(self)
+            subset = self.copy()
             for k in list(subset.data.keys()):
                 subset.data[k] = subset.data[k][ind]
             return subset
@@ -313,6 +316,8 @@ class SimulatedSource:
         self.data['U'] = np.zeros(self.data['freq'].shape)
 
         # TODO: add a way to create and plot the FDF
+    def copy(self):
+        return copy.deepcopy(self)
 
     def __add__(self, y):
         """[summary]
@@ -330,7 +335,7 @@ class SimulatedSource:
         # TODO: This needs a way to combine models (not just data)
         # TODO: Also deal with noise and noisestd somehow!
         lm = len(self.data['freq'] == y.data['freq'])
-        result = copy.deepcopy(self)
+        result = self.copy()
         if lm == 0:
             print("Append mode")
             for k in list(self.data.keys()):
