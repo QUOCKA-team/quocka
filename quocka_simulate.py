@@ -15,6 +15,8 @@ C = 299792458.  # m/s
 
 
 class RealSource:
+    """Store data from a real QUOCKA source.
+    """    
 
     def __init__(self):
         self.data = {}
@@ -114,7 +116,8 @@ class RealSource:
 
 
 class SimulatedSource:
-    
+    """Generate a simulated QUOCKA source
+    """    
     def __init__(self,
                  template=None,
                  freq=None,
