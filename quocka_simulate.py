@@ -18,8 +18,16 @@ class RealSource:
 
     def __init__(self):
         self.data = {}
+        self.i_fit = None
 
     def read_data(self, filename, reformatted=False):
+        """Read data from QUOCKA source file.
+
+        Args:
+            filename (str): Name of source
+            reformatted (bool, optional): Source file is reformatted. 
+                Defaults to False.
+        """
         values = np.loadtxt(filename)
         ind = np.argsort(values[:, 0])
         if reformatted:
@@ -44,6 +52,16 @@ class RealSource:
             self.data['Verr'] = values[ind, 8]
 
     def freq_subset(self, fmin=None, fmax=None, inplace=False):
+        """Get a subset of the data, using a frequency cut.
+
+        Args:
+            fmin (float, optional): Minimum frequency of cut. Defaults to None.
+            fmax (float, optional): Maximum frequency of cut. Defaults to None.
+            inplace (bool, optional): Update data in place. Defaults to False.
+
+        Returns:
+            RealSource: Cut down RealSource object.
+        """
         if fmin is None:
             fmin = np.amin(self.data['freq'])
         if fmax is None:
@@ -59,10 +77,69 @@ class RealSource:
                 subset.data[k] = subset.data[k][ind]
             return subset
 
+    def fit_imodel(self, order=3, show_plot=True):
+        """Fit polynomial to Stokes I spectrum.
+
+        Args:
+            order (int, optional): Order of fit for polyval. Defaults to 3.
+            show_plot (bool, optional): Show plot of model fit. Defaults to True.
+
+        Returns:
+            list: Polyfit values.
+        """        
+        i_fit = np.polyfit(np.log10(self.data['freq']),
+                           np.log10(self.data['I']),
+                           order
+                           )
+        if show_plot:
+            plt.figure(facecolor='w')
+            plt.plot(self.data['freq'],
+                     self.data['I'],
+                     '.',
+                     label='Data'
+                     )
+            plt.plot(self.data['freq'],
+                     10.**np.polyval(i_fit, np.log10(self.data['freq'])),
+                     'r-',
+                     label='Model'
+                     )
+            plt.xscale('log')
+            plt.yscale('log')
+            plt.xlabel('Frequency [Hz]')
+            plt.ylabel('Stokes I [Jy/beam]')
+            plt.legend()
+
+        self.i_fit = i_fit
+        return i_fit
+
 
 class SimulatedSource:
+    
+    def __init__(self,
+                 template=None,
+                 freq=None,
+                 inoise=None,
+                 inoisestd=None,
+                 qnoise=None,
+                 qnoisestd=None,
+                 unoise=None,
+                 unoisestd=None):
+        """SimulatedSource
 
-    def __init__(self, template=None, freq=None, inoise=0., inoisestd=0., qnoise=0., qnoisestd=0., unoise=0., unoisestd=0.):
+        Args:
+            template (RealSource, optional): Source to use as template. Defaults to None.
+            freq (array-like, optional): List of frequencies. Defaults to None.
+            inoise (float, optional): Mean noise in Stokes I. Defaults to None.
+            inoisestd (float, optional): Std of noise in Stokes I. Defaults to None.
+            qnoise (float, optional): Mean noise in Stokes Q. Defaults to None.
+            qnoisestd (float, optional): Std of noise in Stokes Q. Defaults to None.
+            unoise (float, optional): Mean noise in Stokes Q. Defaults to None.
+            unoisestd (float, optional): Std of noise in Stokes Q. Defaults to None.
+
+        Raises:
+            ValueError: If no template or frequency is provided.
+            ValueError: If a template and frequency are provided.
+        """                
         self.data = {}
         self.model = {}
         self.model['I'] = {}
@@ -82,20 +159,58 @@ class SimulatedSource:
                 self).__module__, "Template must be a quocka_simulate object"
             self.data['freq'] = template.data['freq']
             self.data['lamsq'] = template.data['lamsq']
+            if not [inoise, qnoise, unoise] == [None, None, None]:
+                self.noise = {
+                    'I': inoise,
+                    'Q': qnoise,
+                    'U': unoise
+                }
+            else:
+                self.noise = {
+                    'I': np.nanmedian(template.data['Ierr']),
+                    'Q': np.nanmedian(template.data['Qerr']),
+                    'U': np.nanmedian(template.data['Uerr'])
+                }
+            if not [inoise, qnoise, unoise] == [None, None, None]:
+                self.noisestd = {
+                    'I': inoisestd,
+                    'Q': qnoisestd,
+                    'U': unoisestd
+                }
+            else:
+                self.noisestd = {
+                    'I': np.nanstd(template.data['Ierr']),
+                    'Q': np.nanstd(template.data['Qerr']),
+                    'U': np.nanstd(template.data['Uerr'])
+                }
         else:
             assert type(
                 freq).__module__ == np.__name__, "Frequencies must be provided as a numpy array"
             assert len(freq.shape) == 1, "Frequency array must be 1-D"
             self.data['freq'] = np.sort(freq)
             self.data['lamsq'] = (C/self.data['freq'])**2
+            self.noise = {'I': inoise, 'Q': qnoise, 'U': unoise}
+            self.noisestd = {'I': inoisestd, 'Q': qnoisestd, 'U': unoisestd}
+
         self.data['I'] = np.zeros(self.data['freq'].shape)
         self.data['Q'] = np.zeros(self.data['freq'].shape)
         self.data['U'] = np.zeros(self.data['freq'].shape)
-        self.noise = {'I': inoise, 'Q': qnoise, 'U': unoise}
-        self.noisestd = {'I': inoisestd, 'Q': qnoisestd, 'U': unoisestd}
+
         # TODO: add a way to create and plot the FDF
 
     def __add__(self, y):
+        """[summary]
+
+        Args:
+            y ([type]): [description]
+
+        Raises:
+            NotImplementedError: [description]
+            NotImplementedError: [description]
+
+        Returns:
+            [type]: [description]
+        """        
         # TODO: This needs a way to combine models (not just data)
         # TODO: Also deal with noise and noisestd somehow!
         lm = len(self.data['freq'] == y.data['freq'])
@@ -124,6 +239,8 @@ class SimulatedSource:
         return result
 
     def set_noise(self, **kwargs):
+        """[summary]
+        """        
         for key, value in list(kwargs.items()):
             if key == 'inoise':
                 self.noise['I'] = value
@@ -141,6 +258,12 @@ class SimulatedSource:
                 print(('WARNING: key', key, 'ignored'))
 
     def write_data(self, filename, reformatted=False):
+        """Write simlated data to disk
+
+        Args:
+            filename (str): Output file name.
+            reformatted (bool, optional): Use formatted format. Defaults to False.
+        """        
         if reformatted:
             datapack = np.zeros((len(self.data['freq']), 7))
             datapack[:, 0] = self.data['freq']
@@ -162,6 +285,12 @@ class SimulatedSource:
         np.savetxt(filename, datapack)
 
     def add_stokesi(self, pvals, log=True):
+        """Create Stokes I data.
+
+        Args:
+            pvals (list): Values for polyfit.
+            log (bool, optional): Create spectrum in log-space. Defaults to True.
+        """        
         if log:
             values = np.polyval(pvals, np.log10(self.data['freq']))
             nl = 10.**values
@@ -171,12 +300,24 @@ class SimulatedSource:
         self.model['I']['I%d' % (self.nmodels[0])] = [pvals, log]
         self.nmodels[0] += 1
 
-    def add_simple_rm(self, pfrac, rm, chi0):
-        print(('Polarization fraction is', pfrac))
-        print(('Intrinsic pol angle is', chi0, 'deg'))
+    def add_simple_rm(self, pfrac, rm, chi0, verbose=False):
+        """Add a simple RM model.
+
+        Tip - use values from RealSource.fit_imodel
+
+        Args:
+            pfrac (float): Polarisation fraction.
+            rm (float): Rotation Measure.
+            chi0 (float): Polarisation angle.
+            verbose (bool, optional): Print out info. Defaults to False.
+        """        
+        if verbose:
+            print(('Polarization fraction is', pfrac))
+            print(('Intrinsic pol angle is', chi0, 'deg'))
         chi0 *= np.pi/180.
-        print(('Intrinsic pol angle is', chi0, 'rad'))
-        print(('RM is', rm, 'rad/m2'))
+        if verbose:
+            print(('Intrinsic pol angle is', chi0, 'rad'))
+            print(('RM is', rm, 'rad/m2'))
         pvals = pfrac*self.data['I']*np.exp(2.j*(chi0+rm*self.data['lamsq']))
         self.data['Q'] += np.real(pvals)
         self.data['U'] += np.imag(pvals)
@@ -185,6 +326,14 @@ class SimulatedSource:
         self.nmodels[1] += 1
 
     def add_dfr(self, pfrac, R, rm, chi0):
+        """Add differential Faraday rotation model (Burn slab).
+
+        Args:
+            pfrac (float): polarisation fraction.
+            R (float): Faraday dpeth.
+            rm (float): Rotation Measure.
+            chi0 (float): Intrinsic polarisation angle.
+        """        
         print(('Polarization fraction is', pfrac))
         print(('Intrinsic pol angle is', chi0, 'deg'))
         chi0 *= np.pi/180.
@@ -202,6 +351,14 @@ class SimulatedSource:
         self.nmodels[1] += 1
 
     def add_ext(self, pfrac, sig, rm, chi0):
+        """Add external Faraday dispersion model
+
+        Args:
+            pfrac (float): Polarisation fraction.
+            sig (float): Faraday dispersion.
+            rm (float): Rotation Measure.
+            chi0 (float): Intrinstic polarisation angle.
+        """
         print(('Polarization fraction is', pfrac))
         print(('Intrinsic pol angle is', chi0, 'deg'))
         chi0 *= np.pi/180.
@@ -218,6 +375,15 @@ class SimulatedSource:
         self.nmodels[1] += 1
 
     def add_mix(self, pfrac, R, sig, rm, chi0):
+        """Add a mixture model.
+
+        Args:
+            pfrac (float): Polarisation fraction
+            R (float): Faraday depth.
+            sig (float): Faraday dispersion.
+            rm (float): Rotation Measure.
+            chi0 (float): Intrinsic polarisation anlge.
+        """        
         print(('Polarization fraction is', pfrac))
         print(('Intrinsic pol angle is', chi0, 'deg'))
         chi0 *= np.pi/180.
@@ -250,6 +416,11 @@ class SimulatedSource:
     #     self.nmodels[1] += 1
 
     def generate_model_fdf(self, phi):
+        """Create model FDF
+
+        Args:
+            phi (array-like): Array of Faraday depths.
+        """        
         model_fdf = np.zeros(phi.shape, dtype=np.complex)
         stokesI = np.zeros(phi.shape)
         glsq = np.arange(-1000, 1000.0005, 0.001)
@@ -310,11 +481,19 @@ class SimulatedSource:
         self.model_fdf['data'] = model_fdf
 
     def plot_model_fdf(self, pltfile=None):
+        """Plot model FDF.
+
+        Args:
+            pltfile (str, optional): Outfile to save plot. Defaults to None.
+
+        Raises:
+            RuntimeError: If FDF model has not been generated.
+        """        
         # check if model FDF exists
         if len(self.model_fdf['phi']) == 0:
             print('First you need to generate the model FDF with generate_model_fdf()')
             raise RuntimeError
-        plt.figure(figsize=(10, 16))
+        plt.figure(figsize=(10, 16), facecolor='w')
         plt.subplot(311)
         plt.plot(self.model_fdf['phi'], np.abs(self.model_fdf['data']), 'k-')
         plt.xlabel('RM')
@@ -331,6 +510,8 @@ class SimulatedSource:
             plt.savefig(pltfile, bbox_inches='tight', dpi=200)
 
     def apply_noise(self):
+        """Add noise to model I, Q, and U
+        """        
         for stokes in ['I', 'Q', 'U']:
             self.data[stokes+'obs'] = self.data[stokes] + self.noise[stokes] * \
                 np.random.standard_normal(self.data[stokes].shape)
@@ -339,7 +520,12 @@ class SimulatedSource:
                     self.data[stokes].shape) + self.noise[stokes]
 
     def plot_2x2(self, pltfile=None):
-        plt.figure(figsize=(14, 12))
+        """Plot noisy model I, Q and U, Q vs U, and PA
+
+        Args:
+            pltfile (str, optional): Outfile to save plot. Defaults to None.
+        """        
+        plt.figure(figsize=(14, 12), facecolor='w')
         plt.subplot(221)
         plt.errorbar(self.data['freq'], self.data['Iobs'],
                      yerr=self.data['Ierr'], marker='o', mfc='none', ls='none')
@@ -376,4 +562,3 @@ class SimulatedSource:
         plt.ylabel('Pol angle')
         if pltfile is not None:
             plt.savefig(pltfile, bbox_inches='tight', dpi=200)
-
