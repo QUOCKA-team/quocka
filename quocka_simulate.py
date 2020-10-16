@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from RMtools_1D import do_RMsynth_1D, do_RMclean_1D
+import copy
 
 C = 299792458.  # m/s
 
@@ -77,7 +78,7 @@ class RealSource:
             for k in list(self.data.keys()):
                 self.data[k] = self.data[k][ind]
         else:
-            subset = self.copy()
+            subset = copy.deepcopy(self)
             for k in list(subset.data.keys()):
                 subset.data[k] = subset.data[k][ind]
             return subset
@@ -329,7 +330,7 @@ class SimulatedSource:
         # TODO: This needs a way to combine models (not just data)
         # TODO: Also deal with noise and noisestd somehow!
         lm = len(self.data['freq'] == y.data['freq'])
-        result = self.copy()
+        result = copy.deepcopy(self)
         if lm == 0:
             print("Append mode")
             for k in list(self.data.keys()):
