@@ -13,6 +13,7 @@ from astropy.coordinates import SkyCoord, search_around_sky
 import astropy.units as u
 import numpy as np
 import shutil
+from braceexpand import braceexpand
 
 
 def logprint(s2p, lf):
@@ -113,7 +114,10 @@ def main(args, cfg):
     logprint('', logf)
 
     gwcp = cfg.get('input', 'dir')+'/'+cfg.get('input', 'date')+'*'
-    atfiles = sorted(glob.glob(gwcp))
+    atfiles = []
+    for g in braceexpand(gwcp):
+        atfiles.extend(glob.glob(g))
+    atfiles = sorted(atfiles)
     if_use = cfg.getint('input', 'if_use')
     outdir = cfg.get('output', 'dir')
     rawclobber = cfg.getboolean('output', 'rawclobber')
@@ -179,13 +183,13 @@ def main(args, cfg):
                 continue
             if prical in source:
                 pricalname = source
-            elif any([sc in source for sc in seccal.split(',')]):
+            elif seccal != '' and any([sc in source for sc in seccal.split(',')]):
                 seccalnames.append(source)
-            elif seccal_ext in source:
+            elif seccal_ext in source and seccal_ext != '':
                 ext_seccalname = source
-            elif any([pc in source for pc in polcal.split(',')]):
+            elif polcal != '' and any([pc in source for pc in polcal.split(',')]):
                 polcalnames.append(source)
-            elif any([es in source for es in target_ext.split(',')]):
+            elif target_ext != '' and any([es in source for es in target_ext.split(',')]):
                 ext_targetnames.append(source)
             else:
                 targetnames.append(source)
@@ -198,7 +202,7 @@ def main(args, cfg):
             logprint('Error: secondary cal (%s) not found' % seccal, logf)
             logf.close()
             exit(1)
-        if ext_seccalname == '__NOT_FOUND__' and seccal_ext != 'NONE':
+        if ext_seccalname == '__NOT_FOUND__' and seccal_ext != 'NONE' and len(ext_targetnames) != 0:
             logprint('Error: extended-source secondary cal (%s) not found' %
                      seccal_ext, logf)
             logf.close()

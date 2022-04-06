@@ -41,7 +41,8 @@ def get_noise(img_name):
 
 
 sourcename = sys.argv[1]
-vislist = [sourcename+'.2100', sourcename+'.5500', sourcename+'.7500']
+# vislist = [sourcename+'.2100', sourcename+'.5500', sourcename+'.7500']
+vislist = [f"{sourcename}.2100"]
 
 logf = open(sourcename+'.scal.log', 'w', 1)
 
