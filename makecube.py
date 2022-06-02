@@ -100,6 +100,7 @@ def getmaxbeam(data_dict, band, cutoff=15*u.arcsec, tolerance=0.0001, nsamps=200
 
     big_beams = Beams(bmaj*u.deg, bmin*u.deg, bpa*u.deg)
 
+
     try:
         cmn_beam = big_beams.common_beam(
             tolerance=tolerance, epsilon=epsilon, nsamps=nsamps)
@@ -318,7 +319,7 @@ def writecube(data, freqs, header, beam, band, stoke, field, outdir, verbose=Tru
 def main(pool, args, verbose=False):
     """Main script
     """
-    bands = [2100, 5500, 7500]
+    bands = [2100]
     stokes = ['i', 'q', 'u', 'v']
     datadir = args.datadir
     if datadir is not None:
@@ -344,9 +345,10 @@ def main(pool, args, verbose=False):
             data_dict[band].update(
                 {
                     stoke: sorted(
-                        glob(f'{datadir}/{args.field}.{band}.*.{stoke}.cutout.fits'))
+                        glob(f'{datadir}/{args.field}.{band}.*.{stoke}.fits'))
                 }
             )
+
     # Check files were found
     for band in bands:
         for stoke in stokes:
@@ -358,6 +360,7 @@ def main(pool, args, verbose=False):
                      disable=(not verbose)):
         beam_dict = getmaxbeam(data_dict,
                                band,
+                               cutoff=args.cutoff*u.arcsec,
                                tolerance=args.tolerance,
                                nsamps=args.nsamps,
                                epsilon=args.epsilon,

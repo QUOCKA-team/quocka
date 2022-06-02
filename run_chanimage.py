@@ -14,9 +14,10 @@ import os
 from subprocess import call
 import numpy as np
 from astropy.io import fits
+from tqdm.auto import tqdm, trange
 
 sourcename = sys.argv[1]
-mfsdir = '../../scal_makeup/'
+mfsdir = sys.argv[2]
 vislist = sorted(glob.glob(sourcename+'.????'))
 print(vislist)
 
@@ -110,7 +111,7 @@ for vis in vislist:
 # 	call(['rm','-rf','%s.restor.%s.mfs'%(sourcename,freqband)])
 # #     call(['rm','-rf','%s.restor.%s.mfs.fits'%(sourcename,freqband)])
 
-    for i in range(1, 2049, 10):
+    for i in trange(1, 2049, 10):
         call(['invert', 'vis=%s.%s' % (sourcename, freqband),
               'map=%s.d.%s.%04d.i' % (sourcename, freqband, i)+',%s.d.%s.%04d.q' % (sourcename, freqband, i) +
               ',%s.d.%s.%04d.u' % (sourcename, freqband, i) +
