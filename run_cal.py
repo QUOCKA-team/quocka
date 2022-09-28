@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-# TODO: Remove old code
-# TODO: Print mir commands to log file
-# TODO: UVflag before uvsplit
 # TODO: Switch to pymir?
 
 import argparse
@@ -99,29 +96,36 @@ def main(args, cfg):
 
     if not os.path.exists(outdir+'/dat.uv') or rawclobber:
         logprint('Running ATLOD...', logf)
-        if if_use > 0:
-            call(['atlod', 'in=%s' % uvlist, 'out=%s/dat.uv' % outdir, 'ifsel=%s' % if_use,
-                  'options=birdie,noauto,xycorr,rfiflag,notsys'], stdout=logf, stderr=logf)
-        else:
-            call(['atlod', 'in=%s' % uvlist, 'out=%s/dat.uv' % outdir,
-                  'options=birdie,noauto,xycorr,rfiflag'], stdout=logf, stderr=logf)
+        logprint('WARNING - ASSUMING 16CM FOR SPICY QUOCKAS')
+        call(['atlod', 'in=%s' % uvlist, 'out=%s/dat.uv' % outdir, 'ifsel=1',
+                'options=birdie,noauto,xycorr,rfiflag,notsys'], stdout=logf, stderr=logf)
     else:
         logprint('Skipping atlod step', logf)
+
+    # Now in outdir...
     os.chdir(outdir)
+    # Run uvflagging
+    # Hardcoding to 16cm for now
+    logprint('WARNING - FLAGGING BAD 16CM CHANNELS')
+    for line in open('../badchans_%s.txt' % 2100):
+        sline = line.split()
+        lc, uc = sline[0].split('-')
+        dc = int(uc)-int(lc)+1
+        call(['uvflag', 'vis=dat.uv', 'line=chan,%d,%s' % (dc, lc), 'flagval=flag'], stdout=logf, stderr=logf)
+
     logprint('Running UVSPLIT...', logf)
-    if outclobber:
-        logprint('Output files will be clobbered if necessary', logf)
-        call(['uvsplit', 'vis=dat.uv', 'options=mosaic,clobber'],
-             stdout=logf, stderr=logf)
-    else:
-        call(['uvsplit', 'vis=dat.uv', 'options=mosaic'],
-             stdout=logf, stderr=logf)
+    logprint('Output files will be clobbered if necessary', logf)
+    call(['uvsplit', 'vis=dat.uv', 'options=mosaic,clobber' if outclobber else 'options=mosaic'],
+            stdout=logf, stderr=logf)
+
 
     slist = sorted(glob.glob('[j012]*.[257]???'))
 
     logprint('Working on %d sources' % len(slist), logf)
     bandfreq = unique([x[-4:] for x in slist])
     logprint('Frequency bands to process: %s' % (','.join(bandfreq)), logf)
+
+
 
     src_to_plot = []
     for frqb in bandfreq:
@@ -180,22 +184,7 @@ def main(args, cfg):
                 'Skipping flagging and calibration steps on user request.', logf)
             continue
         logprint('Initial flagging round proceeding...', logf)
-        for i, source in enumerate(slist):
-            # only flag data corresponding to the data that we're dealing with (resolves issue #4)
-            if frqb not in source:
-                continue
-            logprint('\nFLAGGING: %d / %d = %s' %
-                     (i+1, len(slist), source), logf)
-            ####
-            # This part may be largely obsolete with options=rfiflag in ATLOD.
-            # However, options=rfiflag doesn't cover all the badchans, so we'll still do this. -XZ
-            for line in open('../badchans_%s.txt' % frqid):
-                sline = line.split()
-                lc, uc = sline[0].split('-')
-                dc = int(uc)-int(lc)+1
-                call(['uvflag', 'vis=%s' % source, 'line=chan,%d,%s' %
-                      (dc, lc), 'flagval=flag'], stdout=logf, stderr=logf)
-            ####
+
 
         # Flagging/calibrating the primary calibrator 1934-638.
         logprint('Calibration of primary cal (%s) proceeding ...' %
@@ -230,10 +219,13 @@ def main(args, cfg):
             call(['gpcal', 'vis=%s' % seccalname, 'interval=0.1', 'nfbin=%d' %
                   NFBIN, 'options=xyvary,qusolve'], stdout=logf, stderr=logf)
             flag(seccalname, logf)
+            call(['gpcal', 'vis=%s' % seccalname, 'interval=0.1', 'nfbin=%d' %
+                  NFBIN, 'options=xyvary,qusolve'], stdout=logf, stderr=logf)
             # boot the flux
             call(['gpboot', 'vis=%s' % seccalname, 'cal=%s' %
                   pricalname], stdout=logf, stderr=logf)
-
+        logprint("Exit for now...")
+        exit()
         while len(seccalnames) > 1:
             logprint('Merging gain table for %s into %s ...' %
                      (seccalnames[-1], seccalnames[0]), logf)
