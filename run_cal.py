@@ -8,7 +8,7 @@ import argparse
 import configparser
 import glob
 import os
-from subprocess import call
+import subprocess as sp
 from numpy import unique
 from astropy.io import fits
 from astropy.wcs import WCS
@@ -28,6 +28,10 @@ def logprint(s2p, lf):
     print(s2p, file=lf)
     print(s2p)
 
+def call(*args, **kwargs):
+    # Call a subprocess, print the command to stdout
+    logprint(' '.join(args[0]))
+    return sp.call(*args, **kwargs)
 
 
 def flag(src, logf):
