@@ -20,6 +20,8 @@ from braceexpand import braceexpand
 ## GLOBALS
 # change nfbin to 2
 NFBIN = 2
+N_P_ROUNDS = 2
+N_S_ROUNDS = 3
 
 def logprint(s2p, lf):
     print(s2p, file=lf)
@@ -27,7 +29,7 @@ def logprint(s2p, lf):
 
 def call(*args, **kwargs):
     # Call a subprocess, print the command to stdout
-    logprint(' '.join(args[0]))
+    logprint(' '.join(args[0]), lf=kwargs['stdout'])
     return sp.call(*args, **kwargs)
 
 
@@ -96,7 +98,7 @@ def main(args, cfg):
 
     if not os.path.exists(outdir+'/dat.uv') or rawclobber:
         logprint('Running ATLOD...', logf)
-        logprint('WARNING - ASSUMING 16CM FOR SPICY QUOCKAS')
+        logprint('WARNING - ASSUMING 16CM FOR SPICY QUOCKAS', logf)
         call(['atlod', 'in=%s' % uvlist, 'out=%s/dat.uv' % outdir, 'ifsel=1',
                 'options=birdie,noauto,xycorr,rfiflag,notsys'], stdout=logf, stderr=logf)
     else:
@@ -106,7 +108,7 @@ def main(args, cfg):
     os.chdir(outdir)
     # Run uvflagging
     # Hardcoding to 16cm for now
-    logprint('WARNING - FLAGGING BAD 16CM CHANNELS')
+    logprint('WARNING - FLAGGING BAD 16CM CHANNELS', logf)
     for line in open('../badchans_%s.txt' % 2100):
         sline = line.split()
         lc, uc = sline[0].split('-')
@@ -115,7 +117,7 @@ def main(args, cfg):
 
     logprint('Running UVSPLIT...', logf)
     logprint('Output files will be clobbered if necessary', logf)
-    call(['uvsplit', 'vis=dat.uv', 'options=mosaic,clobber' if outclobber else 'options=mosaic'],
+    call(['uvsplit', 'vis=dat.uv', '"select=-shadow(25)"', 'options=mosaic,clobber' if outclobber else 'options=mosaic'],
             stdout=logf, stderr=logf)
 
 
@@ -169,6 +171,7 @@ def main(args, cfg):
             exit(1)
         elif seccal_ext == 'NONE':
             ext_seccalname = '(NONE)'
+
         logprint('Identified primary cal: %s' % pricalname, logf)
         logprint('Identified %d secondary cals' % len(seccalnames), logf)
         logprint('Identified %d polarization calibrators' %
@@ -190,23 +193,71 @@ def main(args, cfg):
         logprint('Calibration of primary cal (%s) proceeding ...' %
                  prical, logf)
         # Only select data above elevation=40.
-        call(['uvflag', 'vis=%s' % pricalname, 'select=-elevation(40,90)',
-              'flagval=flag'], stdout=logf, stderr=logf)
-        flag_v(pricalname, logf)
-        # XZ: this part is modified to fix the "no 1934" issue on 2019-06-23. Comment the following three lines if used otherwise.
-        if pricalname == '2052-474.2100':
-            call(['mfcal', 'vis=%s' % pricalname, 'flux=1.6025794,2.211,-0.3699236',
-                  'interval=0.1,1,30'], stdout=logf, stderr=logf)
-        else:
-            call(['mfcal', 'vis=%s' % pricalname, 'interval=0.1,1,30'],
-                 stdout=logf, stderr=logf)
-        flag(pricalname, logf)
-        call(['gpcal', 'vis=%s' % pricalname, 'interval=0.1', 'nfbin=%d' %
-              NFBIN, 'options=xyvary'], stdout=logf, stderr=logf)
-        flag(pricalname, logf)
-        if pricalname == '2052-474.2100':
-            call(['mfboot', 'vis=%s' % pricalname,
-                  'flux=1.6025794,2.211,-0.3699236'], stdout=logf, stderr=logf)
+        call(['uvflag', 'vis=%s' % pricalname, 'select=-elevation(40,90)', 'flagval=flag'], stdout=logf, stderr=logf)
+
+        no_1934 = pricalname == '2052-474.2100'
+        # Flag / cal loops on primary
+        for _ in range(N_P_ROUNDS):
+            flag(pricalname, logf)
+            call(
+                [
+                    'mfcal',
+                    'vis=%s' % pricalname,
+                    'interval=0.1,1,30',
+                    'flux=1.6025794,2.211,-0.3699236' if no_1934 else ''
+                ],
+                stdout=logf,
+                stderr=logf
+            )
+            call(
+                ['gpcal', 'vis=%s' % pricalname, 'interval=0.1', 'nfbin=%d' % NFBIN, 'options=xyvary'],
+                stdout=logf,
+                stderr=logf
+            )
+        if no_1934:
+            call(['mfboot', 'vis=%s' % pricalname, 'flux=1.6025794,2.211,-0.3699236'], stdout=logf, stderr=logf)
+
+        # Plot results
+        call(
+            [
+                'uvplt',
+                'vis=%s' % pricalname,
+                'options=nof,nob,2pass',
+                'stokes=i',
+                'axis=time,amp',
+                'device=%s_time_amp.ps/ps' % (pricalname),
+            ],
+            stdout=logf,
+            stderr=logf,
+        )
+        call(
+            [
+                "ps2pdf",
+                "%s_time_amp.ps" % (pricalname),
+            ],
+            stdout=logf,
+            stderr=logf,
+        )
+        call(
+            [
+                'uvplt',
+                'vis=%s' % pricalname,
+                'options=nof,nob,2pass',
+                'stokes=i',
+                'axis=freq,amp',
+                'device=%s_freq_amp.ps/ps' % (pricalname),
+            ],
+            stdout=logf,
+            stderr=logf,
+        )
+        call(
+            [
+                "ps2pdf",
+                "%s_freq_amp.ps" % (pricalname),
+            ],
+            stdout=logf,
+            stderr=logf,
+        )
 
         # Move on to the secondary calibrator
         for seccalname in seccalnames:
@@ -214,18 +265,66 @@ def main(args, cfg):
                      seccalname, logf)
             call(['gpcopy', 'vis=%s' % pricalname, 'out=%s' %
                   seccalname], stdout=logf, stderr=logf)
-            # flag twice, gpcal twice
-            flag(seccalname, logf)
-            call(['gpcal', 'vis=%s' % seccalname, 'interval=0.1', 'nfbin=%d' %
-                  NFBIN, 'options=xyvary,qusolve'], stdout=logf, stderr=logf)
-            flag(seccalname, logf)
-            call(['gpcal', 'vis=%s' % seccalname, 'interval=0.1', 'nfbin=%d' %
-                  NFBIN, 'options=xyvary,qusolve'], stdout=logf, stderr=logf)
+            # Flag / cal loops on secondary
+            for _ in range(N_S_ROUNDS):
+                flag(seccalname, logf)
+                call(
+                    [
+                        'gpcal', 'vis=%s' % seccalname, 'interval=0.1', 'nfbin=%d' % NFBIN, 'options=xyvary,qusolve'
+                    ],
+                    stdout=logf,
+                    stderr=logf
+                )
+
+            # Plot results before boot
+            call(
+                [
+                    "uvfmeas",
+                    "vis=%s" % seccalname,
+                    "stokes=i",
+                    "order=2",
+                    "options=log,mfflux",
+                    "device=%s_uvfmeas_preboot.ps/ps" % (seccalname),
+                    "feval=2.1",
+                ],
+                stdout=logf,
+                stderr=logf,
+            )
+            call(
+                [
+                    "ps2pdf",
+                    "%s_uvfmeas_preboot.ps" % (seccalname),
+                ],
+                stdout=logf,
+                stderr=logf,
+            )
+
             # boot the flux
             call(['gpboot', 'vis=%s' % seccalname, 'cal=%s' %
                   pricalname], stdout=logf, stderr=logf)
-        logprint("Exit for now...")
-        exit()
+            # Plot results after boot
+            call(
+                [
+                    "uvfmeas",
+                    "vis=%s" % seccalname,
+                    "stokes=i",
+                    "order=2",
+                    "options=log,mfflux",
+                    "device=%s_uvfmeas_postboot.ps/ps" % (seccalname),
+                    "feval=2.1",
+                ],
+                stdout=logf,
+                stderr=logf,
+            )
+            call(
+                [
+                    "ps2pdf",
+                    "%s_uvfmeas_postboot.ps" % (seccalname),
+                ],
+                stdout=logf,
+                stderr=logf,
+            )
+
         while len(seccalnames) > 1:
             logprint('Merging gain table for %s into %s ...' %
                      (seccalnames[-1], seccalnames[0]), logf)
@@ -256,21 +355,6 @@ def main(args, cfg):
             t_pscal = t + '.pscal'
             call(['uvaver', 'vis=%s' % t, 'out=%s' %
                   t_pscal], stdout=logf, stderr=logf)
-
-    for t in sorted(unique(src_to_plot)):
-        logprint('Plotting RMSF for %s' % t, logf)
-        if int(bandfreq[0]) < 3500:
-            call(['uvspec', 'vis=%s.????' % t, 'axis=rm', 'options=nobase,avall', 'nxy=1,2',
-                  'interval=100000', 'xrange=-1500,1500', 'device=junk.eps/vcps'], stdout=logf, stderr=logf)
-        else:
-            # For CX, the IFs have to be catenated before RM Synthesis
-            call(['uvcat', 'vis=%s.????' % t, 'out=%s.cx' %
-                  t], stdout=logf, stderr=logf)
-            call(['uvspec', 'vis=%s.cx' % t, 'axis=rm', 'options=nobase,avall', 'nxy=1,2',
-                  'interval=100000', 'xrange=-3500,3500', 'device=junk.eps/vcps'], stdout=logf, stderr=logf)
-        call(['epstool', '--copy', '--bbox', 'junk.eps',
-              '%s.eps' % t], stdout=logf, stderr=logf)
-        os.remove('junk.eps')
 
     logprint('DONE!', logf)
     logf.close()
