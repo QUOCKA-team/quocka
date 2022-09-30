@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # Doing selfcal on a quocka field
+from http import client
 import time
 import glob
 import os
@@ -9,6 +10,8 @@ from subprocess import call
 import numpy as np
 import shutil
 from astropy.io import fits
+from dask import delayed, compute
+from dask.distributed import Client, LocalCluster
 
 # change nfbin to 2
 NFBIN = 2
@@ -31,14 +34,13 @@ def get_noise(img_name):
     hdu.close()
     return rms, peak_max, peak_min
 
-
-def main():
-    sourcename = sys.argv[1]
-    vislist = [f"{sourcename}.2100"]
-
+@delayed
+def selfcal(vis):
+    sourcename = os.path.basename(vis).replace(".2100.pscal", "")
     logf = open(sourcename+'.scal.log', 'w', 1)
-
-    for t in vislist:
+    logprint("***** Processing %s *****" % sourcename, logf)
+    t = f"{sourcename}.2100"
+    try:
         t_pscal = t + '.pscal'
         t_map = t + '.map'
         t_beam = t + '.beam'
@@ -61,9 +63,6 @@ def main():
         except:
             time.sleep(5)
             sigma, peak_max, peak_min = get_noise(t_dirty)
-
-        # sigma5 = 0.0005
-        # sigma2 = 0.0002
 
         clean_level = 5.0*sigma
 
@@ -114,8 +113,6 @@ def main():
         except:
             time.sleep(5)
             sigma, peak_max, peak_min = get_noise(t_p1)
-        # logprint("RMS of p1 image: %s"%sigma, logf)
-        # logprint("Peak flux density of p1 image: %s"%peak_flux, logf)
 
         # Second round.
         logprint("***** Second round of phase selfcal *****", logf)
@@ -150,18 +147,9 @@ def main():
         except:
             time.sleep(5)
             sigma, peak_max, peak_min = get_noise(t_p2)
-        # logprint("RMS of p2 image: %s"%sigma, logf)
-        # logprint("Peak flux density of p2 image: %s"%peak_flux, logf)
 
         # move on to amp selfcal.
         logprint("***** One round of amp+phase selfcal *****", logf)
-        # sigma2 = 2.0*sigma
-        # if bool_bright == True:
-        # 	mask_level = 10.0*sigma
-        # 	clean_level = 3.0*sigma
-        # else:
-        # 	mask_level = 10.0*sigma
-        # 	clean_level = 3.0*sigma
 
         mask_level = np.amax([10*sigma, -peak_min*1.5])
         clean_level = 5.0*sigma
@@ -199,7 +187,24 @@ def main():
         shutil.rmtree(t_restor)
         shutil.rmtree(t_model)
 
+    except Exception as e:
+        logprint("Failed to run selfcal: %s" % e, logf)
+
     logf.close()
 
+def main(vislist):
+    slist = []
+    for vis in vislist:
+        slist.append(selfcal(vis))
+
+    _ = compute(*slist)
+
+
 if __name__ == '__main__':
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('vislist', nargs='+')
+    parser.add_argument('--ncores', type=int, default=1)
+    args = parser.parse_args()
+    with Client(n_workers=args.ncores, threads_per_worker=1) as client:
+        main(args.vislist)
