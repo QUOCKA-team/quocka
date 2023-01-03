@@ -2,10 +2,10 @@
 """ For getting fluxes right in Jy/beam """
 __author__ = "Tessa Vernstrom"
 
-from scipy import *
-import numpy as np
 import math
 
+import numpy as np
+from scipy import *
 
 
 def gaussianDeconvolve(smaj, smin, spa, bmaj, bmin, bpa):
@@ -25,8 +25,8 @@ def gaussianDeconvolve(smaj, smin, spa, bmaj, bmin, bpa):
     0.5. Feel a little wary about that first change.
     """
 
-    from numpy import cos, sin, sqrt, min, abs, arctan2
     import numpy as np
+    from numpy import abs, arctan2, cos, min, sin, sqrt
     
     spa=np.radians(spa)
     bpa=np.radians(bpa)

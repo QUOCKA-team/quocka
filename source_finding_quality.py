@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import aplpy
 import sys
+
+import aplpy
 import matplotlib
+
 matplotlib.use('Agg')
 
 sname = sys.argv[1]

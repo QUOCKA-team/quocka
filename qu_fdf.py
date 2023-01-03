@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
-import sys
-import matplotlib.pyplot as plt
 import pickle
-import numpy as np
+import sys
+
 import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+
 matplotlib.use('Agg')
 
 rootSname = sys.argv[1]

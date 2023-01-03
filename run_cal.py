@@ -5,17 +5,17 @@ import argparse
 import configparser
 import glob
 import os
+import shutil
 import subprocess as sp
-from numpy import unique
-from astropy.io import fits
-from astropy.wcs import WCS
-from astropy.table import Table
-from astropy.coordinates import SkyCoord, search_around_sky
+
 import astropy.units as u
 import numpy as np
-import shutil
+from astropy.coordinates import SkyCoord, search_around_sky
+from astropy.io import fits
+from astropy.table import Table
+from astropy.wcs import WCS
 from braceexpand import braceexpand
-
+from numpy import unique
 
 ## GLOBALS
 # change nfbin to 2

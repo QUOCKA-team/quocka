@@ -6,12 +6,13 @@ First version by Philippa Patterson, 10 December 2018
 Updated by GH and PP 10 December 2018
 '''
 
-import sys
 import argparse
 import configparser
 import glob
 import os
+import sys
 from subprocess import call
+
 import numpy as np
 from astropy.io import fits
 from tqdm.auto import tqdm, trange

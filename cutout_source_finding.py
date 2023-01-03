@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
+
 from astropy.io import fits
 from astropy.nddata.utils import Cutout2D
 from astropy.wcs import WCS
-import sys
 
 sname = sys.argv[1]
 

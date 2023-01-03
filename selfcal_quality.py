@@ -1,14 +1,16 @@
 #!/usr/bin/env python
 
+import glob
+import sys
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+from astropy.io import fits
 from astropy.nddata import Cutout2D
 from astropy.utils.data import get_pkg_data_filename
 from astropy.wcs import WCS
-import matplotlib.pyplot as plt
-import glob
-import sys
-from astropy.io import fits
-import numpy as np
-import matplotlib as mpl
+
 mpl.use('Agg')
 
 # Get the noise of an image

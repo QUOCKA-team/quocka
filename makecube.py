@@ -1,20 +1,22 @@
 #!/usr/bin/env python
 """Make QUOCKA cubes"""
 
-import schwimmbad
 import sys
+from functools import partial
 from glob import glob
-from tqdm import tqdm
-from radio_beam import Beam, Beams
-from radio_beam.utils import BeamError
+
+import matplotlib.pyplot as plt
+import numpy as np
+import schwimmbad
+import scipy.signal
 from astropy import units as u
 from astropy.io import fits
-import matplotlib.pyplot as plt
-import au2
-import scipy.signal
-import numpy as np
-from functools import partial
 from IPython import embed
+from radio_beam import Beam, Beams
+from radio_beam.utils import BeamError
+from tqdm import tqdm
+
+import au2
 
 
 def round_up(n, decimals=0):

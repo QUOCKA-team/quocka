@@ -8,15 +8,17 @@ Created on Tue Mar 26 14:04:50 2019
 Make Q,U spectrum from channel images
 """
 
-import sys
-import os
 import glob
-from scipy.optimize import curve_fit
-from astropy import wcs
-from astropy.io import fits
+import os
+import sys
+
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib as mpl
+from astropy import wcs
+from astropy.io import fits
+from scipy.optimize import curve_fit
+
 mpl.use('Agg')
 
 

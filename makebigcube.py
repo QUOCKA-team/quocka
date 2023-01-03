@@ -1,24 +1,27 @@
 #!/usr/bin/env python
 """Make big QUOCKA cubes"""
 
-from IPython import embed
-import schwimmbad
 import sys
+import warnings
+from functools import partial
 from glob import glob
-from tqdm import tqdm
+
 import matplotlib.pyplot as plt
-from radio_beam import Beam, Beams
-from radio_beam.utils import BeamError
+import numpy as np
+import reproject as rpj
+import schwimmbad
+import scipy.signal
 from astropy import units as u
 from astropy.io import fits
-from astropy.wcs import WCS
-import au2
-import scipy.signal
-import numpy as np
-from functools import partial
-import reproject as rpj
-import warnings
 from astropy.utils.exceptions import AstropyWarning
+from astropy.wcs import WCS
+from IPython import embed
+from radio_beam import Beam, Beams
+from radio_beam.utils import BeamError
+from tqdm import tqdm
+
+import au2
+
 warnings.simplefilter('ignore', category=AstropyWarning)
 
 # Require reproject >= 0.7

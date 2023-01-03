@@ -8,12 +8,13 @@ Could be adapted later to make it more general ...
 V1 GHH 26 December 2018
 """
 
-import astropy.units as u
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz
-from astropy.time import Time
-import numpy as np
-import matplotlib.pyplot as plt
 import argparse
+
+import astropy.units as u
+import matplotlib.pyplot as plt
+import numpy as np
+from astropy.coordinates import AltAz, EarthLocation, SkyCoord
+from astropy.time import Time
 
 # Stuff for updating plot with hover action derived from answer here:
 # https://stackoverflow.com/questions/7908636/possible-to-make-labels-appear-when-hovering-over-a-point-in-matplotlib

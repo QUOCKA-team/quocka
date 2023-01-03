@@ -1,16 +1,17 @@
 #!/usr/bin/env python
 
 # Doing selfcal on a quocka field
-from http import client
-import time
 import glob
 import os
-import sys
-from subprocess import call
-import numpy as np
 import shutil
+import sys
+import time
+from http import client
+from subprocess import call
+
+import numpy as np
 from astropy.io import fits
-from dask import delayed, compute
+from dask import compute, delayed
 from dask.distributed import Client, LocalCluster
 
 # change nfbin to 2
