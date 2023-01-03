@@ -4,6 +4,7 @@
 import argparse
 import configparser
 import glob
+import logging
 import os
 import shutil
 import subprocess as sp
@@ -16,6 +17,10 @@ from astropy.table import Table
 from astropy.wcs import WCS
 from braceexpand import braceexpand
 from numpy import unique
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(module)s:%(levelname)s %(message)s")
+logger.setLevel(logging.INFO)
 
 ## GLOBALS
 # change nfbin to 2
@@ -489,6 +494,8 @@ def cli():
 
     cfg = configparser.RawConfigParser()
     cfg.read(args.config_file)
+
+    logging.basicConfig(filename=args.log_file, filemode="w", format="%(module)s:%(levelname)s %(message)s")
 
     main(args, cfg)
 
