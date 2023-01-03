@@ -470,7 +470,7 @@ def main(args, cfg):
     logf.close()
 
 
-if __name__ == "__main__":
+def cli():
     ap = argparse.ArgumentParser()
     ap.add_argument("config_file", help="Input configuration file")
     ap.add_argument(
@@ -491,3 +491,6 @@ if __name__ == "__main__":
     cfg.read(args.config_file)
 
     main(args, cfg)
+
+if __name__ == "__main__":
+    cli()

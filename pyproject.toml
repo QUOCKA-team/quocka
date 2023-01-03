@@ -30,3 +30,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 quocka_init = 'quocka.quocka_init:cli'
+quocka_cal = 'quocka.run_cal:cli'
+quocka_selfcal = 'quocka.run_selfcal:cli'
+quocka_cube = 'quocka.makecube:cli'

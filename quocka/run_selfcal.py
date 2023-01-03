@@ -441,7 +441,7 @@ def main(vislist):
     _ = compute(*slist)
 
 
-if __name__ == "__main__":
+def cli():
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -450,3 +450,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     with Client(n_workers=args.ncores, threads_per_worker=1) as client:
         main(args.vislist)
+
+if __name__ == "__main__":
+    cli()
