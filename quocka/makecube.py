@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Make QUOCKA cubes"""
 
+import logging
 import sys
 from functools import partial
 from glob import glob
@@ -17,6 +18,9 @@ from radio_beam import Beam, Beams
 from radio_beam.utils import BeamError
 from tqdm import tqdm
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(module)s:%(levelname)s %(message)s")
+logger.setLevel(logging.INFO)
 
 def round_up(n, decimals=0):
     multiplier = 10**decimals
@@ -122,8 +126,8 @@ def getmaxbeam(
         )
     except BeamError:
         if verbose:
-            print("Couldn't find common beam with defaults")
-            print("Trying again with smaller tolerance")
+            logger.info("Couldn't find common beam with defaults")
+            logger.info("Trying again with smaller tolerance")
         cmn_beam = big_beams.common_beam(
             tolerance=tolerance * 0.1, epsilon=epsilon, nsamps=nsamps
         )
@@ -149,7 +153,7 @@ def getmaxbeam(
             min_samps.append([samp, b_idx])
 
     if len(min_samps) > 0:
-        print("Adjusting common beam to be sampled by grid!")
+        logger.info("Adjusting common beam to be sampled by grid!")
         worst_idx = np.argmin([samp[0] for samp in min_samps], axis=0)
         samp_cor_fac, idx = 2 / min_samps[worst_idx][0], int(min_samps[worst_idx][1])
         conbeam = conbeams[idx]
@@ -163,7 +167,7 @@ def getmaxbeam(
 
         cor_beam = Beam(major, minor, pa)
         if verbose:
-            print("Smallest common beam is:", cmn_beam)
+            logger.info(f"Smallest common beam is: {cmn_beam}")
         cmn_beam = big_beams[idx].convolve(cor_beam)
         cmn_beam = Beam(
             major=my_ceil(cmn_beam.major.to(u.arcsec).value, precision=1) * u.arcsec,
@@ -171,7 +175,7 @@ def getmaxbeam(
             pa=round_up(cmn_beam.pa.to(u.deg), decimals=2),
         )
         if verbose:
-            print("Smallest common Nyquist sampled beam is:", cmn_beam)
+            logger.info(f"Smallest common Nyquist sampled beam is: {cmn_beam}")
     if debug:
         from matplotlib.patches import Ellipse
 
@@ -244,7 +248,7 @@ def smooth(inps, new_beam, verbose=False):
     """
     filename, old_beam, flag = inps
     if verbose:
-        print(f"Getting image data from {filename}")
+        logger.info(f"Getting image data from {filename}")
     with fits.open(filename, memmap=True, mode="denywrite") as hdu:
         dx = hdu[0].header["CDELT1"] * -1 * u.deg
         dy = hdu[0].header["CDELT2"] * u.deg
@@ -272,8 +276,8 @@ def smooth(inps, new_beam, verbose=False):
         )
 
         if verbose:
-            print(f"Smoothing so beam is", new_beam)
-            print(f"Using convolving beam", con_beam)
+            logger.info(f"Smoothing so beam is {new_beam}")
+            logger.info(f"Using convolving beam {con_beam}")
 
         pix_scale = dy
 
@@ -325,13 +329,13 @@ def writecube(data, freqs, header, beam, band, stoke, field, outdir, verbose=Tru
     # Save the data
     fits.writeto(f"{outdir}/{outfile}", data_sorted, header=header, overwrite=True)
     if verbose:
-        print("Saved cube to", f"{outdir}/{outfile}")
+        logger.info(f"Saved cube to {outdir}/{outfile}")
 
     if stoke == "i":
         freqfile = f"{field}.{band}.bandcube.frequencies.txt"
         np.savetxt(f"{outdir}/{freqfile}", freqs_sorted.to_value())
         if verbose:
-            print("Saved frequencies to", f"{outdir}/{freqfile}")
+            logger.info(f"Saved frequencies to {outdir}/{freqfile}")
 
 
 def main(pool, args, verbose=False):
@@ -379,21 +383,21 @@ def main(pool, args, verbose=False):
             debug=args.debug,
         )
         if verbose:
-            print(f"Common beam for band {band} is", beam_dict["common_beam"])
+            logger.info(f"Common beam for band {band} is {beam_dict['common_beam']}")
         data_dict[band].update(beam_dict)
 
     # Do the convolution
     if verbose:
-        print("Making cube per band")
+        logger.info("Making cube per band")
     for band in bands:
         if verbose:
-            print(f"Band: {band}")
+            logger.info(f"Band: {band}")
         smooth_partial = partial(
             smooth, new_beam=data_dict[band]["common_beam"], verbose=False
         )
         for stoke in stokes:
             if verbose:
-                print(f"Stokes: {stoke}")
+                logger.info(f"Stokes: {stoke}")
             data = list(
                 tqdm(
                     pool.imap(
@@ -428,7 +432,7 @@ def main(pool, args, verbose=False):
                 )
 
     if verbose:
-        print("Done!")
+        logger.info("Done!")
 
 
 def cli():
@@ -524,6 +528,12 @@ def cli():
         default=200,
         help="nsamps for radio_beam.commonbeam.",
     )
+    parser.add_argument(
+        "-l",
+        "--log_file",
+        help="Name of output log file [default log.txt]",
+        default="log.txt",
+    )
 
     group = parser.add_mutually_exclusive_group()
 
@@ -540,20 +550,25 @@ def cli():
 
     args = parser.parse_args()
 
-    pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
-    if args.mpi:
-        if not pool.is_master():
-            pool.wait()
-            sys.exit(0)
+    logging.basicConfig(
+        filename=args.log_file,
+        filemode="a",
+        format="%(module)s:%(levelname)s %(message)s",
+    )
 
-    # make it so we can use imap in serial and mpi mode
-    if not isinstance(pool, schwimmbad.MultiPool):
-        pool.imap = pool.map
+    with schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores) as pool:
+        if args.mpi:
+            if not pool.is_master():
+                pool.wait()
+                sys.exit(0)
 
-    verbose = args.verbose
+        # make it so we can use imap in serial and mpi mode
+        if not isinstance(pool, schwimmbad.MultiPool):
+            pool.imap = pool.map
 
-    main(pool, args, verbose=verbose)
-    pool.close()
+        verbose = args.verbose
+
+        main(pool, args, verbose=verbose)
 
 
 if __name__ == "__main__":
