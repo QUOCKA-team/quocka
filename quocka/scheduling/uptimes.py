@@ -42,14 +42,20 @@ def hover(event, fig, ax, annot, all_lines, names):
                     fig.canvas.draw_idle()
 
 
-def main(args):
+def main(
+    csvfile="",
+    date="",
+    noplot=True,
+    aest=False,
+    elevation=20.0,
+):
 
-    if args.noplot:
+    if noplot:
         show_plots = False
     else:
         show_plots = True
-    date = args.date + " 00:00:00"
-    if args.aest:
+    date = date + " 00:00:00"
+    if aest:
         work_in_utc = False
     else:
         work_in_utc = True
@@ -66,7 +72,7 @@ def main(args):
 
     print("Creating source list")
     sources = {}
-    for line in open(args.csvfile):
+    for line in open(csvfile):
         if line[0] == ",":
             continue
         sline = line.split()[0].split(",")
@@ -88,7 +94,7 @@ def main(args):
     setlist = []
 
     print("Looking at each source individually")
-    print("Reporting rise,set times in LST for elevation=%f" % (args.elevation))
+    print("Reporting rise,set times in LST for elevation=%f" % (elevation))
     outfile = open("poltimes.txt", "w")
     all_lines = []
     names = sorted(sources.keys())
@@ -96,7 +102,7 @@ def main(args):
         s = sources[source]
         c = SkyCoord(s[0], s[1], unit="deg")
         altaz = c.transform_to(frame)
-        sdalt = np.sign(altaz.alt - args.elevation * u.deg)
+        sdalt = np.sign(altaz.alt - elevation * u.deg)
         jumps = np.diff(sdalt)
         setind = np.where(jumps == -2)  # should only be one
         riseind = np.where(jumps == 2)  # should only be one
@@ -133,7 +139,7 @@ def main(args):
     if show_plots:
         plt.fill_between(sorted_lst, 0, 20, color="0.75", zorder=0)
         plt.fill_between(sorted_lst, 0, 12, color="0.5", zorder=0)
-        plt.axhline(args.elevation, color="black", zorder=0)
+        plt.axhline(elevation, color="black", zorder=0)
         plt.ylim(0, 90)
         plt.xlim(0, 24)
         plt.xlabel("LST")
@@ -185,4 +191,10 @@ if __name__ == "__main__":
         type=float,
     )
     args = ap.parse_args()
-    main(args)
+    main(
+        csvfile=args.csvfile,
+        date=args.date,
+        aest=args.aest,
+        noplot=args.noplot,
+        elevation=args.elevation,
+    )
