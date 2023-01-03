@@ -495,9 +495,14 @@ def cli():
     cfg = configparser.RawConfigParser()
     cfg.read(args.config_file)
 
-    logging.basicConfig(filename=args.log_file, filemode="w", format="%(module)s:%(levelname)s %(message)s")
+    logging.basicConfig(
+        filename=args.log_file,
+        filemode="w",
+        format="%(module)s:%(levelname)s %(message)s",
+    )
 
     main(args, cfg)
+
 
 if __name__ == "__main__":
     cli()

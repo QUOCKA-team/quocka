@@ -6,6 +6,7 @@ import warnings
 from functools import partial
 from glob import glob
 
+import au2
 import matplotlib.pyplot as plt
 import numpy as np
 import reproject as rpj
@@ -19,8 +20,6 @@ from IPython import embed
 from radio_beam import Beam, Beams
 from radio_beam.utils import BeamError
 from tqdm import tqdm
-
-import au2
 
 warnings.simplefilter("ignore", category=AstropyWarning)
 

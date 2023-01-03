@@ -451,5 +451,6 @@ def cli():
     with Client(n_workers=args.ncores, threads_per_worker=1) as client:
         main(args.vislist)
 
+
 if __name__ == "__main__":
     cli()

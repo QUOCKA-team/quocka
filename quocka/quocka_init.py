@@ -5,9 +5,10 @@ Set up the QUOCKA directory structure and copy the default config files.
 """
 
 import argparse
+import logging
 import os
 import shutil
-import logging
+
 import pkg_resources
 
 logger = logging.getLogger(__name__)
@@ -17,12 +18,13 @@ logger.setLevel(logging.INFO)
 # Stolen from https://stackoverflow.com/questions/9727673/list-directory-tree-structure-in-python
 def list_files(startpath):
     for root, dirs, files in os.walk(startpath):
-        level = root.replace(startpath, '').count(os.sep)
-        indent = ' ' * 4 * (level)
-        print('{}{}/'.format(indent, os.path.basename(root)))
-        subindent = ' ' * 4 * (level + 1)
+        level = root.replace(startpath, "").count(os.sep)
+        indent = " " * 4 * (level)
+        print("{}{}/".format(indent, os.path.basename(root)))
+        subindent = " " * 4 * (level + 1)
         for f in files:
-            print('{}{}'.format(subindent, f))
+            print("{}{}".format(subindent, f))
+
 
 def main(
     raw_vis_list=[],
@@ -57,6 +59,7 @@ def main(
 
     list_files(out_dir)
 
+
 def cli():
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -66,11 +69,10 @@ def cli():
         nargs="+",
         help="List of raw visibility files to copy to the raw directory",
     )
-    parser.add_argument(
-        "-o", "--out-dir", default=".", help="Output directory"
-    )
+    parser.add_argument("-o", "--out-dir", default=".", help="Output directory")
     args = parser.parse_args()
     main(**vars(args))
+
 
 if __name__ == "__main__":
     cli()
