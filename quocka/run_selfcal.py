@@ -22,7 +22,6 @@ logging.basicConfig(format="%(module)s:%(levelname)s %(message)s")
 logger.setLevel(logging.INFO)
 
 
-
 def get_noise(img_name):
     # Get the rms and peak flux of an image. RMS is estimated using a clipped version of the image data.
     hdu = fits.open(img_name)
@@ -40,7 +39,9 @@ def get_noise(img_name):
 @delayed
 def selfcal(vis):
     sourcename = os.path.basename(vis).replace(".2100.pscal", "")
-    logger.info("***** Processing %s *****" % sourcename, )
+    logger.info(
+        "***** Processing %s *****" % sourcename,
+    )
     t = f"{sourcename}.2100"
     try:
         t_pscal = t + ".pscal"
@@ -52,8 +53,12 @@ def selfcal(vis):
         t_dirty = t + ".dirty.fits"
         t_mask = t + ".mask"
 
-        logger.info("***** Start selfcal: %s *****" % t, )
-        logger.info("Generate the dirty image:", )
+        logger.info(
+            "***** Start selfcal: %s *****" % t,
+        )
+        logger.info(
+            "Generate the dirty image:",
+        )
         # Generate a MFS image without selfcal.
         call(
             [
@@ -67,13 +72,9 @@ def selfcal(vis):
                 "imsize=2,2,beam",
                 "cell=5,5,res",
             ],
-
-
         )
         call(
             ["fits", "op=xyout", "in=%s" % t_map, "out=%s" % t_dirty],
-
-
         )
 
         try:
@@ -84,9 +85,13 @@ def selfcal(vis):
 
         clean_level = 5.0 * sigma
 
-        logger.info("RMS of dirty image: %s" % sigma, )
+        logger.info(
+            "RMS of dirty image: %s" % sigma,
+        )
         # logger.info("Peak flux density of dirty image: %s"%peak_max, )
-        logger.info("Generate a cleaned image:", )
+        logger.info(
+            "Generate a cleaned image:",
+        )
         call(
             [
                 "mfclean",
@@ -97,8 +102,6 @@ def selfcal(vis):
                 "cutoff=%s,%s" % (clean_level, 2 * sigma),
                 "region='perc(90)'",
             ],
-
-
         )
         call(
             [
@@ -108,13 +111,9 @@ def selfcal(vis):
                 "model=%s" % t_model,
                 "out=%s" % t_restor,
             ],
-
-
         )
         call(
             ["fits", "op=xyout", "in=%s" % t_restor, "out=%s" % t_p0],
-
-
         )
         try:
             sigma, peak_max, peak_min = get_noise(t_p0)
@@ -124,7 +123,9 @@ def selfcal(vis):
 
         # First round of phase selfcal.
         # Generate a mask
-        logger.info("***** First round of phase selfcal *****", )
+        logger.info(
+            "***** First round of phase selfcal *****",
+        )
         mask_level = np.amax([10 * sigma, -peak_min * 1.5])
         clean_level = 5.0 * sigma
         call(
@@ -134,8 +135,6 @@ def selfcal(vis):
                 "mask=<%s>.gt.%s" % (t_restor, mask_level),
                 "out=%s" % t_mask,
             ],
-
-
         )
         shutil.rmtree(t_restor)
         shutil.rmtree(t_model)
@@ -149,8 +148,6 @@ def selfcal(vis):
                 "cutoff=%s,%s" % (clean_level, 2 * sigma),
                 "region=mask(%s)" % t_mask,
             ],
-
-
         )
         call(
             [
@@ -161,8 +158,6 @@ def selfcal(vis):
                 "nfbin=1",
                 "options=phase,mfs",
             ],
-
-
         )
         shutil.rmtree(t_map)
         shutil.rmtree(t_beam)
@@ -182,8 +177,6 @@ def selfcal(vis):
                 "imsize=2,2,beam",
                 "cell=5,5,res",
             ],
-
-
         )
         call(
             [
@@ -195,8 +188,6 @@ def selfcal(vis):
                 "cutoff=%s,%s" % (clean_level, 2 * sigma),
                 "region='perc(90)'",
             ],
-
-
         )
         call(
             [
@@ -206,13 +197,9 @@ def selfcal(vis):
                 "model=%s" % t_model,
                 "out=%s" % t_restor,
             ],
-
-
         )
         call(
             ["fits", "op=xyout", "in=%s" % t_restor, "out=%s" % t_p1],
-
-
         )
         try:
             sigma, peak_max, peak_min = get_noise(t_p1)
@@ -221,7 +208,9 @@ def selfcal(vis):
             sigma, peak_max, peak_min = get_noise(t_p1)
 
         # Second round.
-        logger.info("***** Second round of phase selfcal *****", )
+        logger.info(
+            "***** Second round of phase selfcal *****",
+        )
         mask_level = np.amax([10 * sigma, -peak_min * 1.5])
         clean_level = 5.0 * sigma
 
@@ -232,8 +221,6 @@ def selfcal(vis):
                 "mask=<%s>.gt.%s" % (t_restor, mask_level),
                 "out=%s" % t_mask,
             ],
-
-
         )
         shutil.rmtree(t_restor)
         shutil.rmtree(t_model)
@@ -247,8 +234,6 @@ def selfcal(vis):
                 "cutoff=%s,%s" % (clean_level, 2 * sigma),
                 "region=mask(%s)" % t_mask,
             ],
-
-
         )
 
         call(
@@ -260,8 +245,6 @@ def selfcal(vis):
                 "nfbin=1",
                 "options=phase,mfs",
             ],
-
-
         )
         shutil.rmtree(t_map)
         shutil.rmtree(t_beam)
@@ -281,8 +264,6 @@ def selfcal(vis):
                 "imsize=2,2,beam",
                 "cell=5,5,res",
             ],
-
-
         )
         call(
             [
@@ -294,8 +275,6 @@ def selfcal(vis):
                 "cutoff=%s,%s" % (clean_level, 2 * sigma),
                 "region='perc(90)'",
             ],
-
-
         )
         call(
             [
@@ -305,13 +284,9 @@ def selfcal(vis):
                 "model=%s" % t_model,
                 "out=%s" % t_restor,
             ],
-
-
         )
         call(
             ["fits", "op=xyout", "in=%s" % t_restor, "out=%s" % t_p2],
-
-
         )
         try:
             sigma, peak_max, peak_min = get_noise(t_p2)
@@ -320,7 +295,9 @@ def selfcal(vis):
             sigma, peak_max, peak_min = get_noise(t_p2)
 
         # move on to amp selfcal.
-        logger.info("***** One round of amp+phase selfcal *****", )
+        logger.info(
+            "***** One round of amp+phase selfcal *****",
+        )
 
         mask_level = np.amax([10 * sigma, -peak_min * 1.5])
         clean_level = 5.0 * sigma
@@ -332,8 +309,6 @@ def selfcal(vis):
                 "mask=<%s>.gt.%s" % (t_restor, mask_level),
                 "out=%s" % t_mask,
             ],
-
-
         )
         shutil.rmtree(t_restor)
         shutil.rmtree(t_model)
@@ -347,8 +322,6 @@ def selfcal(vis):
                 "cutoff=%s,%s" % (clean_level, 2 * sigma),
                 "region=mask(%s)" % t_mask,
             ],
-
-
         )
         t_ascal = t + ".ascal"
         call(
@@ -365,8 +338,6 @@ def selfcal(vis):
                 "nfbin=1",
                 "options=amp,mfs",
             ],
-
-
         )
         shutil.rmtree(t_map)
         shutil.rmtree(t_beam)
@@ -386,8 +357,6 @@ def selfcal(vis):
                 "imsize=2,2,beam",
                 "cell=5,5,res",
             ],
-
-
         )
         call(
             [
@@ -399,8 +368,6 @@ def selfcal(vis):
                 "cutoff=%s,%s" % (clean_level, 2 * sigma),
                 "region='perc(90)'",
             ],
-
-
         )
         call(
             [
@@ -410,13 +377,9 @@ def selfcal(vis):
                 "model=%s" % t_model,
                 "out=%s" % t_restor,
             ],
-
-
         )
         call(
             ["fits", "op=xyout", "in=%s" % t_restor, "out=%s" % t_p2a1],
-
-
         )
 
         shutil.rmtree(t_map)
@@ -425,8 +388,9 @@ def selfcal(vis):
         shutil.rmtree(t_model)
 
     except Exception as e:
-        logger.info("Failed to run selfcal: %s" % e, )
-
+        logger.info(
+            "Failed to run selfcal: %s" % e,
+        )
 
 
 def main(cfg, vislist):
