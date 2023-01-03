@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(format="%(module)s:%(levelname)s %(message)s")
 logger.setLevel(logging.INFO)
 
+
 def round_up(n, decimals=0):
     multiplier = 10**decimals
     return np.ceil(n * multiplier) / multiplier
