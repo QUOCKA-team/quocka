@@ -29,7 +29,9 @@ def call(*args, **kwargs):
     return sp.call(*args, **kwargs)
 
 
-def flag(src, ):
+def flag(
+    src,
+):
     # Pgflagging lines, following the ATCA users guide. Pgflagging needs to be done on all the calibrators and targets.
     call(
         [
@@ -40,8 +42,6 @@ def flag(src, ):
             "command=<b",
             "options=nodisp",
         ],
-
-
     )
     call(
         [
@@ -52,8 +52,6 @@ def flag(src, ):
             "command=<b",
             "options=nodisp",
         ],
-
-
     )
     call(
         [
@@ -64,12 +62,12 @@ def flag(src, ):
             "command=<b",
             "options=nodisp",
         ],
-
-
     )
 
 
-def flag_v(src, ):
+def flag_v(
+    src,
+):
     # pgflagging, stokes V only.
     call(
         [
@@ -80,8 +78,6 @@ def flag_v(src, ):
             "command=<b",
             "options=nodisp",
         ],
-
-
     )
 
 
@@ -96,12 +92,24 @@ def get_noise(img_name):
 
 def main(args, cfg):
     # Initiate log file with options used
-    logger.info("Input settings:", )
-    logger.info(args, )
-    logger.info(cfg.items("input"), )
-    logger.info(cfg.items("output"), )
-    logger.info(cfg.items("observation"), )
-    logger.info("", )
+    logger.info(
+        "Input settings:",
+    )
+    logger.info(
+        args,
+    )
+    logger.info(
+        cfg.items("input"),
+    )
+    logger.info(
+        cfg.items("output"),
+    )
+    logger.info(
+        cfg.items("observation"),
+    )
+    logger.info(
+        "",
+    )
 
     gwcp = cfg.get("input", "dir") + "/" + cfg.get("input", "date") + "*"
     atfiles = []
@@ -120,7 +128,9 @@ def main(args, cfg):
     target_ext = cfg.get("observation", "ext")
 
     if not os.path.exists(outdir):
-        logger.info("Creating directory %s" % outdir, )
+        logger.info(
+            "Creating directory %s" % outdir,
+        )
         os.makedirs(outdir)
     for line in open(args.setup_file):
         if line[0] == "#":
@@ -128,13 +138,19 @@ def main(args, cfg):
         sline = line.split()
         for a in atfiles:
             if sline[0] in a:
-                logger.info("Ignoring setup file %s" % sline[0], )
+                logger.info(
+                    "Ignoring setup file %s" % sline[0],
+                )
                 atfiles.remove(a)
     uvlist = ",".join(atfiles)
 
     if not os.path.exists(outdir + "/dat.uv") or rawclobber:
-        logger.info("Running ATLOD...", )
-        logger.info("WARNING - ASSUMING 16CM FOR SPICY QUOCKAS", )
+        logger.info(
+            "Running ATLOD...",
+        )
+        logger.info(
+            "WARNING - ASSUMING 16CM FOR SPICY QUOCKAS",
+        )
         call(
             [
                 "atlod",
@@ -143,29 +159,33 @@ def main(args, cfg):
                 "ifsel=1",
                 "options=birdie,noauto,xycorr,rfiflag,notsys",
             ],
-
-
         )
     else:
-        logger.info("Skipping atlod step", )
+        logger.info(
+            "Skipping atlod step",
+        )
 
     # Now in outdir...
     os.chdir(outdir)
     # Run uvflagging
     # Hardcoding to 16cm for now
-    logger.info("WARNING - FLAGGING BAD 16CM CHANNELS", )
+    logger.info(
+        "WARNING - FLAGGING BAD 16CM CHANNELS",
+    )
     for line in open("../badchans_%s.txt" % 2100):
         sline = line.split()
         lc, uc = sline[0].split("-")
         dc = int(uc) - int(lc) + 1
         call(
             ["uvflag", "vis=dat.uv", "line=chan,%d,%s" % (dc, lc), "flagval=flag"],
-
-
         )
 
-    logger.info("Running UVSPLIT...", )
-    logger.info("Output files will be clobbered if necessary", )
+    logger.info(
+        "Running UVSPLIT...",
+    )
+    logger.info(
+        "Output files will be clobbered if necessary",
+    )
     call(
         [
             "uvsplit",
@@ -173,15 +193,17 @@ def main(args, cfg):
             '"select=-shadow(25)"',
             "options=mosaic,clobber" if outclobber else "options=mosaic",
         ],
-
-
     )
 
     slist = sorted(glob.glob("[j012]*.[257]???"))
 
-    logger.info("Working on %d sources" % len(slist), )
+    logger.info(
+        "Working on %d sources" % len(slist),
+    )
     bandfreq = unique([x[-4:] for x in slist])
-    logger.info("Frequency bands to process: %s" % (",".join(bandfreq)), )
+    logger.info(
+        "Frequency bands to process: %s" % (",".join(bandfreq)),
+    )
 
     src_to_plot = []
     for frqb in bandfreq:
@@ -214,9 +236,13 @@ def main(args, cfg):
                 targetnames.append(source)
                 src_to_plot.append(source[:-5])
         if pricalname == "__NOT_FOUND__":
-            raise FileNotFoundError("primary cal (%s) not found" % prical, )
+            raise FileNotFoundError(
+                "primary cal (%s) not found" % prical,
+            )
         if len(seccalnames) == 0:
-            raise FileNotFoundError("secondary cal (%s) not found" % seccal, )
+            raise FileNotFoundError(
+                "secondary cal (%s) not found" % seccal,
+            )
         if (
             ext_seccalname == "__NOT_FOUND__"
             and seccal_ext != "NONE"
@@ -228,10 +254,18 @@ def main(args, cfg):
         elif seccal_ext == "NONE":
             ext_seccalname = "(NONE)"
 
-        logger.info("Identified primary cal: %s" % pricalname, )
-        logger.info("Identified %d secondary cals" % len(seccalnames), )
-        logger.info("Identified %d polarization calibrators" % len(polcalnames), )
-        logger.info("Identified %d compact targets to calibrate" % len(targetnames), )
+        logger.info(
+            "Identified primary cal: %s" % pricalname,
+        )
+        logger.info(
+            "Identified %d secondary cals" % len(seccalnames),
+        )
+        logger.info(
+            "Identified %d polarization calibrators" % len(polcalnames),
+        )
+        logger.info(
+            "Identified %d compact targets to calibrate" % len(targetnames),
+        )
         logger.info(
             "Identified secondary cal for extended sources: %s" % ext_seccalname,
         )
@@ -239,12 +273,18 @@ def main(args, cfg):
             "Identified %d extended targets to calibrate" % len(ext_targetnames),
         )
         if skipcal:
-            logger.info("Skipping flagging and calibration steps on user request.", )
+            logger.info(
+                "Skipping flagging and calibration steps on user request.",
+            )
             continue
-        logger.info("Initial flagging round proceeding...", )
+        logger.info(
+            "Initial flagging round proceeding...",
+        )
 
         # Flagging/calibrating the primary calibrator 1934-638.
-        logger.info("Calibration of primary cal (%s) proceeding ..." % prical, )
+        logger.info(
+            "Calibration of primary cal (%s) proceeding ..." % prical,
+        )
         # Only select data above elevation=40.
         call(
             [
@@ -253,14 +293,14 @@ def main(args, cfg):
                 "select=-elevation(40,90)",
                 "flagval=flag",
             ],
-
-
         )
 
         no_1934 = pricalname == "2052-474.2100"
         # Flag / cal loops on primary
         for _ in range(N_P_ROUNDS):
-            flag(pricalname, )
+            flag(
+                pricalname,
+            )
             call(
                 [
                     "mfcal",
@@ -268,8 +308,6 @@ def main(args, cfg):
                     "interval=0.1,1,30",
                     "flux=1.6025794,2.211,-0.3699236" if no_1934 else "",
                 ],
-
-
             )
             call(
                 [
@@ -279,14 +317,10 @@ def main(args, cfg):
                     "nfbin=%d" % NFBIN,
                     "options=xyvary",
                 ],
-
-
             )
         if no_1934:
             call(
                 ["mfboot", "vis=%s" % pricalname, "flux=1.6025794,2.211,-0.3699236"],
-
-
             )
 
         # Plot results
@@ -299,16 +333,12 @@ def main(args, cfg):
                 "axis=time,amp",
                 "device=%s_time_amp.ps/ps" % (pricalname),
             ],
-
-
         )
         call(
             [
                 "ps2pdf",
                 "%s_time_amp.ps" % (pricalname),
             ],
-
-
         )
         call(
             [
@@ -319,16 +349,12 @@ def main(args, cfg):
                 "axis=freq,amp",
                 "device=%s_freq_amp.ps/ps" % (pricalname),
             ],
-
-
         )
         call(
             [
                 "ps2pdf",
                 "%s_freq_amp.ps" % (pricalname),
             ],
-
-
         )
 
         # Move on to the secondary calibrator
@@ -338,12 +364,12 @@ def main(args, cfg):
             )
             call(
                 ["gpcopy", "vis=%s" % pricalname, "out=%s" % seccalname],
-
-
             )
             # Flag / cal loops on secondary
             for _ in range(N_S_ROUNDS):
-                flag(seccalname, )
+                flag(
+                    seccalname,
+                )
                 call(
                     [
                         "gpcal",
@@ -352,8 +378,6 @@ def main(args, cfg):
                         "nfbin=%d" % NFBIN,
                         "options=xyvary,qusolve",
                     ],
-
-
                 )
 
             # Plot results before boot
@@ -367,23 +391,17 @@ def main(args, cfg):
                     "device=%s_uvfmeas_preboot.ps/ps" % (seccalname),
                     "feval=2.1",
                 ],
-
-
             )
             call(
                 [
                     "ps2pdf",
                     "%s_uvfmeas_preboot.ps" % (seccalname),
                 ],
-
-
             )
 
             # boot the flux
             call(
                 ["gpboot", "vis=%s" % seccalname, "cal=%s" % pricalname],
-
-
             )
             # Plot results after boot
             call(
@@ -396,16 +414,12 @@ def main(args, cfg):
                     "device=%s_uvfmeas_postboot.ps/ps" % (seccalname),
                     "feval=2.1",
                 ],
-
-
             )
             call(
                 [
                     "ps2pdf",
                     "%s_uvfmeas_postboot.ps" % (seccalname),
                 ],
-
-
             )
 
         while len(seccalnames) > 1:
@@ -420,25 +434,29 @@ def main(args, cfg):
                     "out=%s" % seccalnames[0],
                     "mode=merge",
                 ],
-
-
             )
             del seccalnames[-1]
         seccalname = seccalnames[0]
-        logger.info("Using gains from %s ..." % (seccalname), )
+        logger.info(
+            "Using gains from %s ..." % (seccalname),
+        )
         logger.info(
             "\n\n##########\nApplying calibration to compact sources...\n##########\n\n",
         )
         for t in targetnames:
-            logger.info("Working on source %s" % t, )
+            logger.info(
+                "Working on source %s" % t,
+            )
             # Move on to the target!
             call(
                 ["gpcopy", "vis=%s" % seccalname, "out=%s" % t],
-
-
             )
-            flag(t, )
-            flag(t, )
+            flag(
+                t,
+            )
+            flag(
+                t,
+            )
             logger.info("Writing source flag and pol info")
             call(["uvfstats", "vis=%s" % t])
             call(["uvfstats", "vis=%s" % t, "mode=channel"])
@@ -447,7 +465,10 @@ def main(args, cfg):
             t_pscal = t + ".pscal"
             call(["uvaver", "vis=%s" % t, "out=%s" % t_pscal])
 
-    logger.info("DONE!", )
+    logger.info(
+        "DONE!",
+    )
+
 
 def cli():
     ap = argparse.ArgumentParser()
