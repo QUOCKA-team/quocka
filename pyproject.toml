@@ -27,3 +27,6 @@ isort = "*"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+quocka_init = 'quocka.quocka_init:cli'
