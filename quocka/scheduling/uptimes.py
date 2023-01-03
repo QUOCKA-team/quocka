@@ -164,24 +164,25 @@ def main(args):
         plt.show()
 
 
-ap = argparse.ArgumentParser()
-ap.add_argument("csvfile", help="Input CSV file name, must be QUOCKA formatted")
-ap.add_argument("date", help="Date to use for calculations [format yyyy-mm-dd]")
-ap.add_argument(
-    "--aest",
-    "-a",
-    help="Work in AEST times instead of UTC? [default False]",
-    action="store_true",
-)
-ap.add_argument(
-    "--noplot", "-n", help="Suppress plots? [default False]", action="store_true"
-)
-ap.add_argument(
-    "--elevation",
-    "-e",
-    help="Elevation value to treat as horizon [default 20]",
-    default=20.0,
-    type=float,
-)
-args = ap.parse_args()
-main(args)
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("csvfile", help="Input CSV file name, must be QUOCKA formatted")
+    ap.add_argument("date", help="Date to use for calculations [format yyyy-mm-dd]")
+    ap.add_argument(
+        "--aest",
+        "-a",
+        help="Work in AEST times instead of UTC? [default False]",
+        action="store_true",
+    )
+    ap.add_argument(
+        "--noplot", "-n", help="Suppress plots? [default False]", action="store_true"
+    )
+    ap.add_argument(
+        "--elevation",
+        "-e",
+        help="Elevation value to treat as horizon [default 20]",
+        default=20.0,
+        type=float,
+    )
+    args = ap.parse_args()
+    main(args)
