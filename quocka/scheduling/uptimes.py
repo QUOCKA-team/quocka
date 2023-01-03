@@ -49,7 +49,7 @@ def main(
     aest=False,
     elevation=20.0,
 ):
-    date = date + " 00:00:00"
+    date += " 00:00:00"
 
     ATCA = EarthLocation(
         lat=-30.3128846 * u.deg, lon=149.5501388 * u.deg, height=236.87 * u.m
