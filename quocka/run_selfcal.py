@@ -3,6 +3,7 @@
 # Doing selfcal on a quocka field
 import configparser
 import glob
+import logging
 import os
 import shutil
 import sys
@@ -16,15 +17,14 @@ from dask import compute, delayed
 from dask.distributed import Client, LocalCluster
 
 
-def logprint(s2p, lf):
-    print(s2p, file=lf)
-    print(s2p)
+logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(module)s:%(levelname)s %(message)s")
+logger.setLevel(logging.INFO)
 
-
-# Get the rms and peak flux of an image. RMS is estimated using a clipped version of the image data.
 
 
 def get_noise(img_name):
+    # Get the rms and peak flux of an image. RMS is estimated using a clipped version of the image data.
     hdu = fits.open(img_name)
     data = hdu[0].data[0, 0]
     rms_initial = np.std(data)
@@ -40,8 +40,7 @@ def get_noise(img_name):
 @delayed
 def selfcal(vis):
     sourcename = os.path.basename(vis).replace(".2100.pscal", "")
-    logf = open(sourcename + ".scal.log", "w", 1)
-    logprint("***** Processing %s *****" % sourcename, logf)
+    logger.info("***** Processing %s *****" % sourcename, )
     t = f"{sourcename}.2100"
     try:
         t_pscal = t + ".pscal"
@@ -53,8 +52,8 @@ def selfcal(vis):
         t_dirty = t + ".dirty.fits"
         t_mask = t + ".mask"
 
-        logprint("***** Start selfcal: %s *****" % t, logf)
-        logprint("Generate the dirty image:", logf)
+        logger.info("***** Start selfcal: %s *****" % t, )
+        logger.info("Generate the dirty image:", )
         # Generate a MFS image without selfcal.
         call(
             [
@@ -68,13 +67,13 @@ def selfcal(vis):
                 "imsize=2,2,beam",
                 "cell=5,5,res",
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         call(
             ["fits", "op=xyout", "in=%s" % t_map, "out=%s" % t_dirty],
-            stdout=logf,
-            stderr=logf,
+
+
         )
 
         try:
@@ -85,9 +84,9 @@ def selfcal(vis):
 
         clean_level = 5.0 * sigma
 
-        logprint("RMS of dirty image: %s" % sigma, logf)
-        # logprint("Peak flux density of dirty image: %s"%peak_max, logf)
-        logprint("Generate a cleaned image:", logf)
+        logger.info("RMS of dirty image: %s" % sigma, )
+        # logger.info("Peak flux density of dirty image: %s"%peak_max, )
+        logger.info("Generate a cleaned image:", )
         call(
             [
                 "mfclean",
@@ -98,8 +97,8 @@ def selfcal(vis):
                 "cutoff=%s,%s" % (clean_level, 2 * sigma),
                 "region='perc(90)'",
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         call(
             [
@@ -109,13 +108,13 @@ def selfcal(vis):
                 "model=%s" % t_model,
                 "out=%s" % t_restor,
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         call(
             ["fits", "op=xyout", "in=%s" % t_restor, "out=%s" % t_p0],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         try:
             sigma, peak_max, peak_min = get_noise(t_p0)
@@ -125,7 +124,7 @@ def selfcal(vis):
 
         # First round of phase selfcal.
         # Generate a mask
-        logprint("***** First round of phase selfcal *****", logf)
+        logger.info("***** First round of phase selfcal *****", )
         mask_level = np.amax([10 * sigma, -peak_min * 1.5])
         clean_level = 5.0 * sigma
         call(
@@ -135,8 +134,8 @@ def selfcal(vis):
                 "mask=<%s>.gt.%s" % (t_restor, mask_level),
                 "out=%s" % t_mask,
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         shutil.rmtree(t_restor)
         shutil.rmtree(t_model)
@@ -150,8 +149,8 @@ def selfcal(vis):
                 "cutoff=%s,%s" % (clean_level, 2 * sigma),
                 "region=mask(%s)" % t_mask,
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         call(
             [
@@ -162,8 +161,8 @@ def selfcal(vis):
                 "nfbin=1",
                 "options=phase,mfs",
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         shutil.rmtree(t_map)
         shutil.rmtree(t_beam)
@@ -183,8 +182,8 @@ def selfcal(vis):
                 "imsize=2,2,beam",
                 "cell=5,5,res",
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         call(
             [
@@ -196,8 +195,8 @@ def selfcal(vis):
                 "cutoff=%s,%s" % (clean_level, 2 * sigma),
                 "region='perc(90)'",
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         call(
             [
@@ -207,13 +206,13 @@ def selfcal(vis):
                 "model=%s" % t_model,
                 "out=%s" % t_restor,
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         call(
             ["fits", "op=xyout", "in=%s" % t_restor, "out=%s" % t_p1],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         try:
             sigma, peak_max, peak_min = get_noise(t_p1)
@@ -222,7 +221,7 @@ def selfcal(vis):
             sigma, peak_max, peak_min = get_noise(t_p1)
 
         # Second round.
-        logprint("***** Second round of phase selfcal *****", logf)
+        logger.info("***** Second round of phase selfcal *****", )
         mask_level = np.amax([10 * sigma, -peak_min * 1.5])
         clean_level = 5.0 * sigma
 
@@ -233,8 +232,8 @@ def selfcal(vis):
                 "mask=<%s>.gt.%s" % (t_restor, mask_level),
                 "out=%s" % t_mask,
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         shutil.rmtree(t_restor)
         shutil.rmtree(t_model)
@@ -248,8 +247,8 @@ def selfcal(vis):
                 "cutoff=%s,%s" % (clean_level, 2 * sigma),
                 "region=mask(%s)" % t_mask,
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
 
         call(
@@ -261,8 +260,8 @@ def selfcal(vis):
                 "nfbin=1",
                 "options=phase,mfs",
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         shutil.rmtree(t_map)
         shutil.rmtree(t_beam)
@@ -282,8 +281,8 @@ def selfcal(vis):
                 "imsize=2,2,beam",
                 "cell=5,5,res",
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         call(
             [
@@ -295,8 +294,8 @@ def selfcal(vis):
                 "cutoff=%s,%s" % (clean_level, 2 * sigma),
                 "region='perc(90)'",
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         call(
             [
@@ -306,13 +305,13 @@ def selfcal(vis):
                 "model=%s" % t_model,
                 "out=%s" % t_restor,
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         call(
             ["fits", "op=xyout", "in=%s" % t_restor, "out=%s" % t_p2],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         try:
             sigma, peak_max, peak_min = get_noise(t_p2)
@@ -321,7 +320,7 @@ def selfcal(vis):
             sigma, peak_max, peak_min = get_noise(t_p2)
 
         # move on to amp selfcal.
-        logprint("***** One round of amp+phase selfcal *****", logf)
+        logger.info("***** One round of amp+phase selfcal *****", )
 
         mask_level = np.amax([10 * sigma, -peak_min * 1.5])
         clean_level = 5.0 * sigma
@@ -333,8 +332,8 @@ def selfcal(vis):
                 "mask=<%s>.gt.%s" % (t_restor, mask_level),
                 "out=%s" % t_mask,
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         shutil.rmtree(t_restor)
         shutil.rmtree(t_model)
@@ -348,12 +347,12 @@ def selfcal(vis):
                 "cutoff=%s,%s" % (clean_level, 2 * sigma),
                 "region=mask(%s)" % t_mask,
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         t_ascal = t + ".ascal"
         call(
-            ["uvaver", "vis=%s" % t_pscal, "out=%s" % t_ascal], stdout=logf, stderr=logf
+            ["uvaver", "vis=%s" % t_pscal, "out=%s" % t_ascal],
         )
 
         # do the first round of amp selfcal with model generated using phase selfcal.
@@ -366,8 +365,8 @@ def selfcal(vis):
                 "nfbin=1",
                 "options=amp,mfs",
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         shutil.rmtree(t_map)
         shutil.rmtree(t_beam)
@@ -387,8 +386,8 @@ def selfcal(vis):
                 "imsize=2,2,beam",
                 "cell=5,5,res",
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         call(
             [
@@ -400,8 +399,8 @@ def selfcal(vis):
                 "cutoff=%s,%s" % (clean_level, 2 * sigma),
                 "region='perc(90)'",
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         call(
             [
@@ -411,13 +410,13 @@ def selfcal(vis):
                 "model=%s" % t_model,
                 "out=%s" % t_restor,
             ],
-            stdout=logf,
-            stderr=logf,
+
+
         )
         call(
             ["fits", "op=xyout", "in=%s" % t_restor, "out=%s" % t_p2a1],
-            stdout=logf,
-            stderr=logf,
+
+
         )
 
         shutil.rmtree(t_map)
@@ -426,9 +425,8 @@ def selfcal(vis):
         shutil.rmtree(t_model)
 
     except Exception as e:
-        logprint("Failed to run selfcal: %s" % e, logf)
+        logger.info("Failed to run selfcal: %s" % e, )
 
-    logf.close()
 
 
 def main(cfg, vislist):
@@ -450,10 +448,22 @@ def cli():
     parser.add_argument("config_file", help="Input configuration file")
     parser.add_argument("vislist", nargs="+")
     parser.add_argument("--ncores", type=int, default=1)
+    parser.add_argument(
+        "-l",
+        "--log_file",
+        help="Name of output log file [default log.txt]",
+        default="log.txt",
+    )
     args = parser.parse_args()
 
     cfg = configparser.RawConfigParser()
     cfg.read(args.config_file)
+
+    logging.basicConfig(
+        filename=args.log_file,
+        filemode="w",
+        format="%(module)s:%(levelname)s %(message)s",
+    )
 
     with Client(n_workers=args.ncores, threads_per_worker=1) as client:
         main(cfg, args.vislist)
