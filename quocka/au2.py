@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """ For getting fluxes right in Jy/beam """
 __author__ = "Tessa Vernstrom"
 

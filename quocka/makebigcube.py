@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Make big QUOCKA cubes"""
 
 import sys

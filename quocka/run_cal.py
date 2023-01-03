@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # TODO: Switch to pymir?
 
 import argparse
