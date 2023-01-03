@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "quocka"
+version = "0.1.0"
+description = "Calibrate ATCA QUOCKA data."
+authors = ["George Heald"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+
+[tool.poetry.group.dev.dependencies]
+black = "isort"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
