@@ -27,47 +27,54 @@ def gaussianDeconvolve(smaj, smin, spa, bmaj, bmin, bpa):
 
     import numpy as np
     from numpy import abs, arctan2, cos, min, sin, sqrt
-    
-    spa=np.radians(spa)
-    bpa=np.radians(bpa)
+
+    spa = np.radians(spa)
+    bpa = np.radians(bpa)
     if smaj < bmaj:
         smaj = bmaj
     if smin < bmin:
         smin = bmin
 
-    alpha = ((smaj * cos (spa))**2 + (smin * sin (spa))**2 -
-             (bmaj * cos (bpa))**2 - (bmin * sin (bpa))**2)
-    beta = ((smaj * sin (spa))**2 + (smin * cos (spa))**2 -
-            (bmaj * sin (bpa))**2 - (bmin * cos (bpa))**2)
-    gamma = 2 * ((smin**2 - smaj**2) * sin (spa) * cos (spa) -
-                 (bmin**2 - bmaj**2) * sin (bpa) * cos (bpa))
-#    print smaj,smin
-#    print alpha,beta,gamma
+    alpha = (
+        (smaj * cos(spa)) ** 2
+        + (smin * sin(spa)) ** 2
+        - (bmaj * cos(bpa)) ** 2
+        - (bmin * sin(bpa)) ** 2
+    )
+    beta = (
+        (smaj * sin(spa)) ** 2
+        + (smin * cos(spa)) ** 2
+        - (bmaj * sin(bpa)) ** 2
+        - (bmin * cos(bpa)) ** 2
+    )
+    gamma = 2 * (
+        (smin**2 - smaj**2) * sin(spa) * cos(spa)
+        - (bmin**2 - bmaj**2) * sin(bpa) * cos(bpa)
+    )
+    #    print smaj,smin
+    #    print alpha,beta,gamma
     s = alpha + beta
-    t = sqrt ((alpha - beta)**2 + gamma**2)
-#    print s,t
-    dmaj = sqrt (0.5 * (s + t))
-    if s>t:
-        dmin = sqrt (0.5 * (s - t))
+    t = sqrt((alpha - beta) ** 2 + gamma**2)
+    #    print s,t
+    dmaj = sqrt(0.5 * (s + t))
+    if s > t:
+        dmin = sqrt(0.5 * (s - t))
     else:
-        dmin= 0
-#    print dmaj,dmin
+        dmin = 0
+    #    print dmaj,dmin
     if alpha < 0 or beta < 0:
         dmaj = dmin = dpa = 0
-    
-#    if(smaj>bmaj):
-#        dmaj= sqrt (0.5 * (s + t))
-    if abs (gamma) + abs (alpha - beta) == 0:
+
+    #    if(smaj>bmaj):
+    #        dmaj= sqrt (0.5 * (s + t))
+    if abs(gamma) + abs(alpha - beta) == 0:
         dpa = 0
     else:
-        dpa=0.5 * arctan2 (-gamma, alpha - beta)
-#    if((s>=t)&(bmin!=smin)):
-#        dmin=sqrt (0.5 * (s - t))
+        dpa = 0.5 * arctan2(-gamma, alpha - beta)
+    #    if((s>=t)&(bmin!=smin)):
+    #        dmin=sqrt (0.5 * (s - t))
 
     return dmaj, dmin, np.degrees(dpa)
-
-
-
 
 
 def gauss_factor(beamConv, beamOrig=None, dx1=1, dy1=1):
@@ -107,47 +114,55 @@ def gauss_factor(beamConv, beamOrig=None, dx1=1, dy1=1):
     # include 'mirconst.h'
     # Define cosine and Sinus of the position Angles of the
     # Gaussians
-    arcsecInGrad=1#(1./3600)*(np.pi/180.)
-    deg2Grad=(np.pi/180)
+    arcsecInGrad = 1  # (1./3600)*(np.pi/180.)
+    deg2Grad = np.pi / 180
     bmaj2, bmin2, bpa2 = beamConv
-    bmaj2, bmin2, bpa2 = (bmaj2 * arcsecInGrad, bmin2 *
-                          arcsecInGrad, bpa2 * deg2Grad)
-    #if beamOrig is None:
+    bmaj2, bmin2, bpa2 = (bmaj2 * arcsecInGrad, bmin2 * arcsecInGrad, bpa2 * deg2Grad)
+    # if beamOrig is None:
     bmaj1, bmin1, bpa1 = beamOrig
-    bmaj1, bmin1, bpa1 = (bmaj1 * arcsecInGrad,
-                              bmin1 * arcsecInGrad,
-                              bpa1 * deg2Grad)
-    #if dx1 is None:
+    bmaj1, bmin1, bpa1 = (bmaj1 * arcsecInGrad, bmin1 * arcsecInGrad, bpa1 * deg2Grad)
+    # if dx1 is None:
     dx1 = dx1 * arcsecInGrad
-    #if dy1 is None:
+    # if dy1 is None:
     dy1 = dy1 * arcsecInGrad
     cospa1 = math.cos(bpa1)
     cospa2 = math.cos(bpa2)
     sinpa1 = math.sin(bpa1)
     sinpa2 = math.sin(bpa2)
-    alpha = ((bmaj1 * cospa1) ** 2
-             + (bmin1 * sinpa1) ** 2
-             + (bmaj2 * cospa2) ** 2
-             + (bmin2 * sinpa2) ** 2)
-    beta = ((bmaj1 * sinpa1) ** 2
-            + (bmin1 * cospa1) ** 2
-            + (bmaj2 * sinpa2) ** 2
-            + (bmin2 * cospa2) ** 2)
-    gamma = (2 * ((bmin1 ** 2 - bmaj1 ** 2)
-                  * sinpa1 * cospa1
-                  + (bmin2 ** 2 - bmaj2 ** 2)
-                  * sinpa2 * cospa2))
+    alpha = (
+        (bmaj1 * cospa1) ** 2
+        + (bmin1 * sinpa1) ** 2
+        + (bmaj2 * cospa2) ** 2
+        + (bmin2 * sinpa2) ** 2
+    )
+    beta = (
+        (bmaj1 * sinpa1) ** 2
+        + (bmin1 * cospa1) ** 2
+        + (bmaj2 * sinpa2) ** 2
+        + (bmin2 * cospa2) ** 2
+    )
+    gamma = 2 * (
+        (bmin1**2 - bmaj1**2) * sinpa1 * cospa1
+        + (bmin2**2 - bmaj2**2) * sinpa2 * cospa2
+    )
     s = alpha + beta
-    t = math.sqrt((alpha - beta) ** 2 + gamma ** 2)
+    t = math.sqrt((alpha - beta) ** 2 + gamma**2)
     bmaj = math.sqrt(0.5 * (s + t))
     bmin = math.sqrt(0.5 * (s - t))
     if (abs(gamma) + abs(alpha - beta)) == 0:
         bpa = 0.0
     else:
         bpa = 0.5 * arctan2(-1 * gamma, alpha - beta)
-        #print alpha,beta,gamma
-    amp = (math.pi / (4.0 * math.log(2.0)) * bmaj1 * bmin1 * bmaj2 * bmin2
-           / math.sqrt(alpha * beta - 0.25 * gamma * gamma))
-    fac = ((math.sqrt(dx1 ** 2) * math.sqrt(dy1 ** 2))) / amp
+        # print alpha,beta,gamma
+    amp = (
+        math.pi
+        / (4.0 * math.log(2.0))
+        * bmaj1
+        * bmin1
+        * bmaj2
+        * bmin2
+        / math.sqrt(alpha * beta - 0.25 * gamma * gamma)
+    )
+    fac = ((math.sqrt(dx1**2) * math.sqrt(dy1**2))) / amp
 
-    return fac, amp, bmaj , bmin , np.degrees(bpa)
+    return fac, amp, bmaj, bmin, np.degrees(bpa)
