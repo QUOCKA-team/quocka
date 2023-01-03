@@ -425,7 +425,7 @@ def cli():
 
     logging.basicConfig(
         filename=args.log_file,
-        filemode="w",
+        filemode="a",
         format="%(module)s:%(levelname)s %(message)s",
     )
 
