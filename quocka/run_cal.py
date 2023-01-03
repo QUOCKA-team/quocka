@@ -90,13 +90,13 @@ def get_noise(img_name):
     return rms
 
 
-def main(args, cfg):
+def main(
+    cfg,
+    setup_file,
+):
     # Initiate log file with options used
     logger.info(
-        "Input settings:",
-    )
-    logger.info(
-        args,
+        "Config settings:",
     )
     logger.info(
         cfg.items("input"),
@@ -140,7 +140,7 @@ def main(args, cfg):
             "Creating directory %s" % outdir,
         )
         os.makedirs(outdir)
-    for line in open(args.setup_file):
+    for line in open(setup_file):
         if line[0] == "#":
             continue
         sline = line.split()
@@ -503,8 +503,14 @@ def cli():
         filemode="a",
         format="%(module)s:%(levelname)s %(message)s",
     )
+    logger.info(
+        "Command-line settings:",
+    )
+    logger.info(
+        args,
+    )
 
-    main(args, cfg)
+    main(cfg, args.setup_file)
 
 
 if __name__ == "__main__":
