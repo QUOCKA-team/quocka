@@ -49,21 +49,12 @@ def main(
     aest=False,
     elevation=20.0,
 ):
-
-    if noplot:
-        show_plots = False
-    else:
-        show_plots = True
     date = date + " 00:00:00"
-    if aest:
-        work_in_utc = False
-    else:
-        work_in_utc = True
 
     ATCA = EarthLocation(
         lat=-30.3128846 * u.deg, lon=149.5501388 * u.deg, height=236.87 * u.m
     )
-    if work_in_utc:
+    if not aest:
         utoffset = 0.0 * u.hour
         timezone = "UTC"
     else:
@@ -95,39 +86,37 @@ def main(
 
     print("Looking at each source individually")
     print("Reporting rise,set times in LST for elevation=%f" % (elevation))
-    outfile = open("poltimes.txt", "w")
-    all_lines = []
-    names = sorted(sources.keys())
-    for source in names:
-        s = sources[source]
-        c = SkyCoord(s[0], s[1], unit="deg")
-        altaz = c.transform_to(frame)
-        sdalt = np.sign(altaz.alt - elevation * u.deg)
-        jumps = np.diff(sdalt)
-        setind = np.where(jumps == -2)  # should only be one
-        riseind = np.where(jumps == 2)  # should only be one
-        assert len(setind) == 1
-        assert len(riseind) == 1
-        setind = setind[0] + 1
-        riseind = riseind[0] + 1
-        settime = sorted_taxis[setind]
-        setlst = sorted_lst[setind]
-        setlst.format = "iso"
-        risetime = sorted_taxis[riseind]
-        riselst = sorted_lst[riseind]
-        riselst.format = "iso"
-        print(source, riselst[0], setlst[0])
-        print(source, riselst[0], setlst[0], file=outfile)
-        sortdict[source] = setlst[0]
-        risedict[source] = riselst[0]
-        setlist.append(setlst.hour)
-        if show_plots:
-            l = plt.plot(sorted_lst, altaz.alt, "k-", alpha=0.3)
-            all_lines.append(l[0])
-            plt.plot(riselst, 20.0, "g.", markersize=3, alpha=0.3)
-            plt.plot(setlst, 20.0, "r.", markersize=3, alpha=0.3)
-
-    outfile.close()
+    with open("poltimes.txt", "w") as outfile:
+        all_lines = []
+        names = sorted(sources.keys())
+        for source in names:
+            s = sources[source]
+            c = SkyCoord(s[0], s[1], unit="deg")
+            altaz = c.transform_to(frame)
+            sdalt = np.sign(altaz.alt - elevation * u.deg)
+            jumps = np.diff(sdalt)
+            setind = np.where(jumps == -2)  # should only be one
+            riseind = np.where(jumps == 2)  # should only be one
+            assert len(setind) == 1
+            assert len(riseind) == 1
+            setind = setind[0] + 1
+            riseind = riseind[0] + 1
+            settime = sorted_taxis[setind]
+            setlst = sorted_lst[setind]
+            setlst.format = "iso"
+            risetime = sorted_taxis[riseind]
+            riselst = sorted_lst[riseind]
+            riselst.format = "iso"
+            print(source, riselst[0], setlst[0])
+            print(source, riselst[0], setlst[0], file=outfile)
+            sortdict[source] = setlst[0]
+            risedict[source] = riselst[0]
+            setlist.append(setlst.hour)
+            if not noplot:
+                l = plt.plot(sorted_lst, altaz.alt, "k-", alpha=0.3)
+                all_lines.append(l[0])
+                plt.plot(riselst, 20.0, "g.", markersize=3, alpha=0.3)
+                plt.plot(setlst, 20.0, "r.", markersize=3, alpha=0.3)
 
     sortout = open("poltimes_sorted_by_set.txt", "w")
     print("Reporting rise,set times in LST (sorted by set time)")
@@ -136,7 +125,7 @@ def main(
         print(sources[key][-1][:-1], file=sortout)
     sortout.close()
 
-    if show_plots:
+    if not noplot:
         plt.fill_between(sorted_lst, 0, 20, color="0.75", zorder=0)
         plt.fill_between(sorted_lst, 0, 12, color="0.5", zorder=0)
         plt.axhline(elevation, color="black", zorder=0)
