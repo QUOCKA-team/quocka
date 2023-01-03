@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # Doing selfcal on a quocka field
+import configparser
 import glob
 import os
 import shutil
@@ -13,9 +14,6 @@ import numpy as np
 from astropy.io import fits
 from dask import compute, delayed
 from dask.distributed import Client, LocalCluster
-
-# change nfbin to 2
-NFBIN = 2
 
 
 def logprint(s2p, lf):
@@ -433,7 +431,11 @@ def selfcal(vis):
     logf.close()
 
 
-def main(vislist):
+def main(cfg, vislist):
+    # Set globals
+    global NFBIN
+    NFBIN = cfg.getint("output", "nfbin")
+
     slist = []
     for vis in vislist:
         slist.append(selfcal(vis))
@@ -445,11 +447,16 @@ def cli():
     import argparse
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("config_file", help="Input configuration file")
     parser.add_argument("vislist", nargs="+")
     parser.add_argument("--ncores", type=int, default=1)
     args = parser.parse_args()
+
+    cfg = configparser.RawConfigParser()
+    cfg.read(args.config_file)
+
     with Client(n_workers=args.ncores, threads_per_worker=1) as client:
-        main(args.vislist)
+        main(cfg, args.vislist)
 
 
 if __name__ == "__main__":
