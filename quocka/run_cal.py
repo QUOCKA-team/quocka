@@ -127,6 +127,14 @@ def main(args, cfg):
     seccal_ext = cfg.get("observation", "sec_ext")
     target_ext = cfg.get("observation", "ext")
 
+    # Set globals
+    global NFBIN
+    NFBIN = cfg.getint("output", "nfbin")
+    global N_P_ROUNDS
+    N_P_ROUNDS = cfg.getint("output", "nprimary")
+    global N_S_ROUNDS
+    N_S_ROUNDS = cfg.getint("output", "nsecondary")
+
     if not os.path.exists(outdir):
         logger.info(
             "Creating directory %s" % outdir,
@@ -489,14 +497,6 @@ def cli():
 
     cfg = configparser.RawConfigParser()
     cfg.read(args.config_file)
-
-    # Set globals
-    global NFBIN
-    NFBIN = cfg.getint("output", "nfbin")
-    global N_P_ROUNDS
-    N_P_ROUNDS = cfg.getint("output", "nprimary")
-    global N_S_ROUNDS
-    N_S_ROUNDS = cfg.getint("output", "nsecondary")
 
     logging.basicConfig(
         filename=args.log_file,
