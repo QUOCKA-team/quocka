@@ -60,13 +60,13 @@ def main(args):
 		utoffset = 10*u.hour
 		timezone = 'AEST'
 
-	print 'Creating source list'
+	print('Creating source list')
 	sources = {}
 	for line in open(args.csvfile):
 		if line[0]==',': continue
 		sline = line.split()[0].split(',')
 		sources[sline[2]]=[float(sline[3]),float(sline[4]),sline[6],line]
-	print 'Working with',len(sources.keys()),'sources'
+	print('Working with',len(list(sources.keys())),'sources')
 
 	midnight = Time(date) - utoffset
 	delta_midnight = np.linspace(0,24,1500)*u.hour # time resolution of ~ 1 minute
@@ -82,8 +82,8 @@ def main(args):
 	risedict = {}
 	setlist = []
 
-	print 'Looking at each source individually'
-	print 'Reporting rise,set times in LST for elevation=%f'%(args.elevation)
+	print('Looking at each source individually')
+	print('Reporting rise,set times in LST for elevation=%f'%(args.elevation))
 	outfile = open('poltimes.txt','w')
 	all_lines = []
 	names = sorted(sources.keys())
@@ -105,8 +105,8 @@ def main(args):
 		risetime = sorted_taxis[riseind]
 		riselst = sorted_lst[riseind]
 		riselst.format='iso'
-		print source,riselst[0],setlst[0]
-		print >>outfile, source,riselst[0],setlst[0]
+		print(source,riselst[0],setlst[0])
+		print(source,riselst[0],setlst[0], file=outfile)
 		sortdict[source] = setlst[0]
 		risedict[source] = riselst[0]
 		setlist.append(setlst.hour)
@@ -119,10 +119,10 @@ def main(args):
 	outfile.close()
 
 	sortout = open('poltimes_sorted_by_set.txt','w')
-	print 'Reporting rise,set times in LST (sorted by set time)'
-	for key,val in sorted(sortdict.iteritems(), key=lambda (k,v): (v,k)):
-		print key,'rise',risedict[key],'set',val
-		print >>sortout, sources[key][-1][:-1]
+	print('Reporting rise,set times in LST (sorted by set time)')
+	for key,val in sorted(iter(sortdict.items()), key=lambda k_v: (k_v[1],k_v[0])):
+		print(key,'rise',risedict[key],'set',val)
+		print(sources[key][-1][:-1], file=sortout)
 	sortout.close()
 
 	if show_plots: 
@@ -133,7 +133,7 @@ def main(args):
 		plt.xlim(0,24)
 		plt.xlabel('LST')
 		plt.ylabel('Altitude (deg)')
-		print 'Plotting elevations vs LST ...'
+		print('Plotting elevations vs LST ...')
 		plt.savefig('source_uptimes.png',bbox_inches='tight',dpi=150)
 		ax = plt.gca()
 		annot = ax.annotate("", xy=(0,0), xytext=(-20,20),textcoords="offset points",
@@ -143,7 +143,7 @@ def main(args):
 		fig = plt.gcf()
 		fig.canvas.mpl_connect("motion_notify_event", lambda event: hover(event,fig,ax,annot,all_lines,names))
 		plt.show()
-		print 'Plotting histogram ...'
+		print('Plotting histogram ...')
 		plt.hist(np.array(setlist),bins=np.linspace(0.,24.,97))
 		plt.xlabel('LST (bin width 15min)')
 		plt.ylabel('Number of sources setting')
