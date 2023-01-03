@@ -492,11 +492,11 @@ def cli():
 
     # Set globals
     global NFBIN
-    NFBIN = cfg.getint("calibration", "nfbin")
+    NFBIN = cfg.getint("output", "nfbin")
     global N_P_ROUNDS
-    N_P_ROUNDS = cfg.getint("calibration", "nprimary")
+    N_P_ROUNDS = cfg.getint("output", "nprimary")
     global N_S_ROUNDS
-    N_S_ROUNDS = cfg.getint("calibration", "nsecondary")
+    N_S_ROUNDS = cfg.getint("output", "nsecondary")
 
     logging.basicConfig(
         filename=args.log_file,
