@@ -2,15 +2,27 @@
 name = "quocka"
 version = "0.1.0"
 description = "Calibrate ATCA QUOCKA data."
-authors = ["George Heald"]
+authors = ["George Heald", "Xiang Zhang", "Alec Thomson", "Tim Galvin"]
 license = "MIT"
 readme = "README.md"
+packages = [
+    { include = "quocka"},
+]
+
+include = [
+    {path='quocka/data', format=['sdist','wheel']},
+]
 
 [tool.poetry.dependencies]
 python = "^3.7"
+numpy = "^1.21"
+astropy = "^5"
+matplotlib = "^3.4"
+
 
 [tool.poetry.group.dev.dependencies]
-black = "isort"
+black = "^22"
+isort = "*"
 
 [build-system]
 requires = ["poetry-core"]
