@@ -244,7 +244,12 @@ def main(
             lc, uc = sline[0].split("-")
             dc = int(uc) - int(lc) + 1
             call(
-                ["uvflag", f"vis=uvsplit.{band}", "line=chan,%d,%s" % (dc, lc), "flagval=flag"],
+                [
+                    "uvflag",
+                    f"vis=uvsplit.{band}",
+                    "line=chan,%d,%s" % (dc, lc),
+                    "flagval=flag",
+                ],
             )
 
     logger.info(
