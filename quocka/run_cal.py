@@ -18,15 +18,25 @@ from astropy.wcs import WCS
 from braceexpand import braceexpand
 from numpy import unique
 
+LOG_FORMAT = "%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s"
+DATE_FORMAT="%Y-%m-%d %H:%M:%S"
 logger = logging.getLogger(__name__)
-logging.basicConfig(format="%(module)s:%(levelname)s %(message)s")
+logging.basicConfig(format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger.setLevel(logging.INFO)
 
 
 def call(*args, **kwargs):
     # Call a subprocess, print the command to stdout
     logger.info(" ".join(args[0]))
-    return sp.call(*args, **kwargs)
+    process = sp.Popen(*args, stdout=sp.PIPE, stderr=sp.STDOUT)
+
+    with process.stdout:
+        try:
+            for line in iter(process.stdout.readline, b''):
+                logger.info(line.decode("utf-8").strip())
+
+        except sp.CalledProcessError as e:
+            logger.error(f"{str(e)}")
 
 
 def flag(
@@ -498,11 +508,12 @@ def cli():
     cfg = configparser.RawConfigParser()
     cfg.read(args.config_file)
 
-    logging.basicConfig(
-        filename=args.log_file,
-        filemode="a",
-        format="%(module)s:%(levelname)s %(message)s",
-    )
+    fh = logging.FileHandler(args.log_file)
+    fh.setLevel(logging.INFO)
+    formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+
     logger.info(
         "Command-line settings:",
     )
