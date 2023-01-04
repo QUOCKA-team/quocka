@@ -17,8 +17,10 @@ from dask import compute, delayed
 from dask.distributed import Client, LocalCluster
 
 
+LOG_FORMAT = "%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s"
+DATE_FORMAT="%Y-%m-%d %H:%M:%S"
 logger = logging.getLogger(__name__)
-logging.basicConfig(format="%(module)s:%(levelname)s %(message)s")
+logging.basicConfig(format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger.setLevel(logging.INFO)
 
 
@@ -423,11 +425,11 @@ def cli():
     cfg = configparser.RawConfigParser()
     cfg.read(args.config_file)
 
-    logging.basicConfig(
-        filename=args.log_file,
-        filemode="a",
-        format="%(module)s:%(levelname)s %(message)s",
-    )
+    fh = logging.FileHandler(args.log_file)
+    fh.setLevel(logging.INFO)
+    formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
 
     with Client(n_workers=args.ncores, threads_per_worker=1) as client:
         main(cfg, args.vislist)
