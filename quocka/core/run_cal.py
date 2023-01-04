@@ -69,7 +69,7 @@ def get_band_from_vis(vis):
 def call(*args, **kwargs):
     # Call a subprocess, print the command to stdout
     logger.info(" ".join(args[0]))
-    process = sp.Popen(*args, stdout=sp.PIPE, stderr=sp.STDOUT)
+    process = sp.Popen(*args, stdout=sp.PIPE, stderr=sp.STDOUT, **kwargs)
 
     with process.stdout:
         try:
