@@ -204,6 +204,11 @@ def main(
     uvlist = ",".join(atfiles)
 
     if not os.path.exists(outdir + "/dat.uv") or rawclobber:
+        if os.path.exists(outdir + "/dat.uv") and rawclobber:
+            logger.info(
+                "Removing existing dat.uv",
+            )
+            shutil.rmtree(outdir + "/dat.uv")
         logger.info(
             "Running ATLOD...",
         )
@@ -231,6 +236,12 @@ def main(
             "options=nosource,clobber" if rawclobber else "options=nosource",
         ]
     )
+    # Check for double IF in 2100 band
+    if os.path.exists("uvsplit.2100.1"):
+        shutil.move("uvsplit.2100.1", "uvsplit.2100")
+    if os.path.exists("uvsplit.2100.2"):
+        shutil.rmtree("uvsplit.2100.2")
+
     # Run uvflagging
     # Check frequency range
     band_list, nbands = get_band_from_vis("dat.uv")
