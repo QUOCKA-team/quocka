@@ -6,7 +6,7 @@ import sys
 from functools import partial
 from glob import glob
 
-import au2
+from quocka.aux import au2
 import matplotlib.pyplot as plt
 import numpy as np
 import schwimmbad
