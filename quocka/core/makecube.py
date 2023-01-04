@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Make QUOCKA cubes"""
+"""
+Produce common resolution cubes for QUOCKA data.
+
+A seperate cube per band will be produced, along with frequency text files.
+"""
 
 import logging
 import sys
@@ -442,17 +446,9 @@ def cli():
     """Command-line interface"""
     import argparse
 
-    # Help string to be shown using the -h option
-    descStr = """
-    Produce common resolution cubes for QUOCKA data.
-
-    A seperate cube per band will be produced, along with frequency text files.
-
-    """
-
     # Parse the command line options
     parser = argparse.ArgumentParser(
-        description=descStr, formatter_class=argparse.RawTextHelpFormatter
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter
     )
 
     parser.add_argument(
