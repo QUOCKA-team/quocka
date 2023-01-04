@@ -60,7 +60,7 @@ def main(
 
     # Copy the raw visbilities to the raw directory
     for vis in raw_vis_list:
-        try_symlink(vis, os.path.join(raw_dir, os.path.basename(vis)))
+        try_symlink(os.path.abspath(vis), os.path.join(raw_dir, os.path.basename(vis)))
 
     # Copy the default config files to the cal directory
     config_dir = pkg_resources.resource_filename("quocka", "data")
