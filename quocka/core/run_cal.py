@@ -18,8 +18,10 @@ from astropy.wcs import WCS
 from braceexpand import braceexpand
 from numpy import unique
 
-LOG_FORMAT = "%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s"
-DATE_FORMAT="%Y-%m-%d %H:%M:%S"
+LOG_FORMAT = (
+    "%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s"
+)
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 logger = logging.getLogger(__name__)
 logging.basicConfig(format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger.setLevel(logging.INFO)
@@ -31,7 +33,7 @@ def get_band_from_vis(vis):
         3.124: 2100,
         4.476: 5500,
     }
-    nband_max = 5 # There are 5 bands at ATCA
+    nband_max = 5  # There are 5 bands at ATCA
 
     # Run uvindex to get vis metadata
     output = sp.run(
@@ -51,15 +53,18 @@ def get_band_from_vis(vis):
         except ValueError:
             continue
         data = "\n".join(lines[idx + 1 : idx + 3])
-        df = Table.read(data.replace("GHz", ""), format='ascii').to_pandas()
+        df = Table.read(data.replace("GHz", ""), format="ascii").to_pandas()
 
         # Get the band
         band = band_lut.get(df["Freq(chan=1)"][0], None)
         if band is None:
-            raise ValueError(f"Could not find band for {vis} (Freq(chan=1)={df['Freq(chan=1)'][0]})")
+            raise ValueError(
+                f"Could not find band for {vis} (Freq(chan=1)={df['Freq(chan=1)'][0]})"
+            )
         band_list.append(band)
         nbands += 1
     return band_list, nbands
+
 
 def call(*args, **kwargs):
     # Call a subprocess, print the command to stdout
@@ -68,7 +73,7 @@ def call(*args, **kwargs):
 
     with process.stdout:
         try:
-            for line in iter(process.stdout.readline, b''):
+            for line in iter(process.stdout.readline, b""):
                 logger.info(line.decode("utf-8").strip())
 
         except sp.CalledProcessError as e:

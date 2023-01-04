@@ -10,7 +10,6 @@ import sys
 from functools import partial
 from glob import glob
 
-from quocka.aux import au2
 import matplotlib.pyplot as plt
 import numpy as np
 import schwimmbad
@@ -22,8 +21,12 @@ from radio_beam import Beam, Beams
 from radio_beam.utils import BeamError
 from tqdm import tqdm
 
-LOG_FORMAT = "%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s"
-DATE_FORMAT="%Y-%m-%d %H:%M:%S"
+from quocka.aux import au2
+
+LOG_FORMAT = (
+    "%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s"
+)
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 logger = logging.getLogger(__name__)
 logging.basicConfig(format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger.setLevel(logging.INFO)
@@ -554,7 +557,6 @@ def cli():
     formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
     fh.setFormatter(formatter)
     logger.addHandler(fh)
-
 
     with schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores) as pool:
         if args.mpi:

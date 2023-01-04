@@ -16,9 +16,10 @@ from astropy.io import fits
 from dask import compute, delayed
 from dask.distributed import Client, LocalCluster
 
-
-LOG_FORMAT = "%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s"
-DATE_FORMAT="%Y-%m-%d %H:%M:%S"
+LOG_FORMAT = (
+    "%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s"
+)
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 logger = logging.getLogger(__name__)
 logging.basicConfig(format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger.setLevel(logging.INFO)

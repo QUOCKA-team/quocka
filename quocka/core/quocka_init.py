@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(format="%(module)s:%(levelname)s %(message)s")
 logger.setLevel(logging.INFO)
 
+
 def try_symlink(src: str, dst: str):
     """Create symlink if it doesn't exist
     Args:
@@ -27,6 +28,7 @@ def try_symlink(src: str, dst: str):
         logger.info(f"Made symlink '{dst}'.")
     except FileExistsError:
         logger.info(f"Symlink '{dst}' exists.")
+
 
 # Stolen from https://stackoverflow.com/questions/9727673/list-directory-tree-structure-in-python
 def list_files(startpath):
@@ -46,7 +48,9 @@ def main(
     # Check that the output directory exists
     os.makedirs(out_dir, exist_ok=True)
 
-    logger.info(f"Setting up QUOCKA directory structure in {os.path.abspath(out_dir)} ...")
+    logger.info(
+        f"Setting up QUOCKA directory structure in {os.path.abspath(out_dir)} ..."
+    )
 
     # Create the output directory structure
     raw_dir = os.path.join(out_dir, "raw")
