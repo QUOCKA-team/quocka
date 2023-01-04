@@ -15,6 +15,19 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(format="%(module)s:%(levelname)s %(message)s")
 logger.setLevel(logging.INFO)
 
+def try_symlink(src: str, dst: str):
+    """Create symlink if it doesn't exist
+    Args:
+        src (str): Source path
+        dst (str): Destination path
+    """
+    # Create output dir if it doesn't exist
+    try:
+        os.symlink(src, dst)
+        logger.info(f"Made symlink '{dst}'.")
+    except FileExistsError:
+        logger.info(f"Symlink '{dst}' exists.")
+
 # Stolen from https://stackoverflow.com/questions/9727673/list-directory-tree-structure-in-python
 def list_files(startpath):
     for root, dirs, files in os.walk(startpath):
@@ -33,7 +46,7 @@ def main(
     # Check that the output directory exists
     os.makedirs(out_dir, exist_ok=True)
 
-    logger.info(f"Setting up QUOCKA directory structure in {out_dir} ...")
+    logger.info(f"Setting up QUOCKA directory structure in {os.path.abspath(out_dir)} ...")
 
     # Create the output directory structure
     raw_dir = os.path.join(out_dir, "raw")
@@ -43,7 +56,7 @@ def main(
 
     # Copy the raw visbilities to the raw directory
     for vis in raw_vis_list:
-        shutil.copy(vis, raw_dir)
+        try_symlink(vis, os.path.join(raw_dir, os.path.basename(vis)))
 
     # Copy the default config files to the cal directory
     config_dir = pkg_resources.resource_filename("quocka", "data")
