@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "quocka"
-version = "0.1.0"
+version = "2.0.0"
 description = "Calibrate ATCA QUOCKA data."
 authors = ["George Heald", "Xiang Zhang", "Alec Thomson", "Tim Galvin"]
 license = "MIT"
