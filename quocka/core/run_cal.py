@@ -212,7 +212,7 @@ def main(
                 "atlod",
                 "in=%s" % uvlist,
                 "out=%s/dat.uv" % outdir,
-                "ifsel=1",
+                f"ifsel={if_use}",
                 "options=birdie,noauto,xycorr,rfiflag,notsys",
             ],
         )
@@ -223,24 +223,29 @@ def main(
 
     # Now in outdir...
     os.chdir(outdir)
+    # Now we need a uvsplit into frequency bands
+    call(
+        [
+            "uvsplit",
+            "vis=dat.uv",
+            "options=nosource,clobber" if rawclobber else "options=nosource",
+        ]
+    )
     # Run uvflagging
-
     # Check frequency range
     band_list, nbands = get_band_from_vis("dat.uv")
+    logger.info(
+        f"Found {nbands} frequency bands: {band_list}",
+    )
 
-    if nbands == 1:
-        for line in open("../badchans_%s.txt" % band_list[0]):
+    for band in band_list:
+        for line in open(f"../badchans_{band}.txt"):
             sline = line.split()
             lc, uc = sline[0].split("-")
             dc = int(uc) - int(lc) + 1
             call(
-                ["uvflag", "vis=dat.uv", "line=chan,%d,%s" % (dc, lc), "flagval=flag"],
+                ["uvflag", f"vis=uvsplit.{band}", "line=chan,%d,%s" % (dc, lc), "flagval=flag"],
             )
-    else:
-        # TODO: implement flagging for multiple bands
-        logger.warning(
-            "Multiple frequency bands found. Skipping uvflagging",
-        )
 
     logger.info(
         "Running UVSPLIT...",
@@ -248,27 +253,25 @@ def main(
     logger.info(
         "Output files will be clobbered if necessary",
     )
-    call(
-        [
-            "uvsplit",
-            "vis=dat.uv",
-            '"select=-shadow(25)"',
-            "options=mosaic,clobber" if outclobber else "options=mosaic",
-        ],
-    )
+
+    for band in band_list:
+        call(
+            [
+                "uvsplit",
+                f"vis=uvsplit.{band}",
+                '"select=-shadow(25)"',
+                "options=mosaic,clobber" if outclobber else "options=mosaic",
+            ],
+        )
 
     slist = sorted(glob.glob("[j012]*.[257]???"))
 
     logger.info(
         "Working on %d sources" % len(slist),
     )
-    bandfreq = unique([x[-4:] for x in slist])
-    logger.info(
-        "Frequency bands to process: %s" % (",".join(bandfreq)),
-    )
 
     src_to_plot = []
-    for frqb in bandfreq:
+    for frqb in band_list:
         logger.info(
             "\n\n##########\nWorking on frequency: %s\n##########\n\n" % (frqb),
         )
@@ -279,8 +282,8 @@ def main(
         targetnames = []
         ext_targetnames = []
         for i, source in enumerate(slist):
-            frqid = source[-4:]
-            if frqid not in frqb:
+            frqid = int(source[-4:])
+            if frqid != frqb:
                 continue
             if prical in source:
                 pricalname = source
