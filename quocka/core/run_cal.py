@@ -25,6 +25,42 @@ logging.basicConfig(format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger.setLevel(logging.INFO)
 
 
+def get_band_from_vis(vis):
+    # Get the band from the vis file
+    band_lut = {
+        3.124: 2100,
+        4.476: 5500,
+    }
+    nband_max = 5 # There are 5 bands at ATCA
+
+    # Run uvindex to get vis metadata
+    output = sp.run(
+        f"uvindex vis={vis}".split(),
+        check=True,
+        capture_output=True,
+    )
+    lines = output.stdout.decode("utf-8").splitlines()
+
+    # Loop over the frequency configurations
+    band_list = []
+    nbands = 0
+    for i in range(nband_max):
+        # Find line with 'Frequency Configuration'
+        try:
+            idx = lines.index(f"Frequency Configuration {i+1}")
+        except ValueError:
+            continue
+        data = "\n".join(lines[idx + 1 : idx + 3])
+        df = Table.read(data.replace("GHz", ""), format='ascii').to_pandas()
+
+        # Get the band
+        band = band_lut.get(df["Freq(chan=1)"][0], None)
+        if band is None:
+            raise ValueError(f"Could not find band for {vis} (Freq(chan=1)={df['Freq(chan=1)'][0]})")
+        band_list.append(band)
+        nbands += 1
+    return band_list, nbands
+
 def call(*args, **kwargs):
     # Call a subprocess, print the command to stdout
     logger.info(" ".join(args[0]))
@@ -166,9 +202,6 @@ def main(
         logger.info(
             "Running ATLOD...",
         )
-        logger.info(
-            "WARNING - ASSUMING 16CM FOR SPICY QUOCKAS",
-        )
         call(
             [
                 "atlod",
@@ -186,16 +219,22 @@ def main(
     # Now in outdir...
     os.chdir(outdir)
     # Run uvflagging
-    # Hardcoding to 16cm for now
-    logger.info(
-        "WARNING - FLAGGING BAD 16CM CHANNELS",
-    )
-    for line in open("../badchans_%s.txt" % 2100):
-        sline = line.split()
-        lc, uc = sline[0].split("-")
-        dc = int(uc) - int(lc) + 1
-        call(
-            ["uvflag", "vis=dat.uv", "line=chan,%d,%s" % (dc, lc), "flagval=flag"],
+
+    # Check frequency range
+    band_list, nbands = get_band_from_vis("dat.uv")
+
+    if nbands == 1:
+        for line in open("../badchans_%s.txt" % band_list[0]):
+            sline = line.split()
+            lc, uc = sline[0].split("-")
+            dc = int(uc) - int(lc) + 1
+            call(
+                ["uvflag", "vis=dat.uv", "line=chan,%d,%s" % (dc, lc), "flagval=flag"],
+            )
+    else:
+        # TODO: implement flagging for multiple bands
+        logger.warning(
+            "Multiple frequency bands found. Skipping uvflagging",
         )
 
     logger.info(
