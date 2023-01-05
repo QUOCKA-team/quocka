@@ -1,0 +1,44 @@
+[tool.poetry]
+name = "quocka"
+version = "2.0.0"
+description = "Calibrate ATCA QUOCKA data."
+authors = ["George Heald", "Xiang Zhang", "Alec Thomson", "Tim Galvin"]
+license = "MIT"
+readme = "README.md"
+packages = [
+    { include = "quocka"},
+]
+
+include = [
+    {path='quocka/data', format=['sdist','wheel']},
+]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+numpy = "^1.21"
+scipy = "*"
+astropy = "^5"
+matplotlib = "^3.4"
+dask = "*"
+distributed = "*"
+braceexpand = "*"
+schwimmbad = "*"
+radio_beam = "*"
+reproject = "*"
+tqdm = "*"
+aplpy = "*"
+ipython = "*"
+
+[tool.poetry.group.dev.dependencies]
+black = "^22"
+isort = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+quocka_init = 'quocka.core.quocka_init:cli'
+quocka_cal = 'quocka.core.run_cal:cli'
+quocka_selfcal = 'quocka.core.run_selfcal:cli'
+quocka_cube = 'quocka.core.makecube:cli'
