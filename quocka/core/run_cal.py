@@ -175,8 +175,6 @@ def main(
     prical = cfg.get("observation", "primary")
     seccal = cfg.get("observation", "secondary")
     polcal = cfg.get("observation", "polcal")
-    seccal_ext = cfg.get("observation", "sec_ext")
-    target_ext = cfg.get("observation", "ext")
 
     # Set globals
     global NFBIN
@@ -291,12 +289,10 @@ def main(
         logger.info(
             "\n\n##########\nWorking on frequency: %s\n##########\n\n" % (frqb),
         )
-        pricalname = "__NOT_FOUND__"
-        ext_seccalname = "__NOT_FOUND__"
+        pricalname = ""
         seccalnames = []
         polcalnames = []
         targetnames = []
-        ext_targetnames = []
         for i, source in enumerate(slist):
             frqid = int(source[-4:])
             if frqid != frqb:
@@ -305,35 +301,19 @@ def main(
                 pricalname = source
             elif seccal != "" and any([sc in source for sc in seccal.split(",")]):
                 seccalnames.append(source)
-            elif seccal_ext in source and seccal_ext != "":
-                ext_seccalname = source
             elif polcal != "" and any([pc in source for pc in polcal.split(",")]):
                 polcalnames.append(source)
-            elif target_ext != "" and any(
-                [es in source for es in target_ext.split(",")]
-            ):
-                ext_targetnames.append(source)
             else:
                 targetnames.append(source)
                 src_to_plot.append(source[:-5])
-        if pricalname == "__NOT_FOUND__":
+        if not pricalname:
             raise FileNotFoundError(
                 "primary cal (%s) not found" % prical,
             )
-        if len(seccalnames) == 0:
+        if not seccalnames:
             raise FileNotFoundError(
                 "secondary cal (%s) not found" % seccal,
             )
-        if (
-            ext_seccalname == "__NOT_FOUND__"
-            and seccal_ext != "NONE"
-            and len(ext_targetnames) != 0
-        ):
-            raise FileNotFoundError(
-                "extended-source secondary cal (%s) not found" % seccal_ext,
-            )
-        elif seccal_ext == "NONE":
-            ext_seccalname = "(NONE)"
 
         logger.info(
             "Identified primary cal: %s" % pricalname,
@@ -346,12 +326,6 @@ def main(
         )
         logger.info(
             "Identified %d compact targets to calibrate" % len(targetnames),
-        )
-        logger.info(
-            "Identified secondary cal for extended sources: %s" % ext_seccalname,
-        )
-        logger.info(
-            "Identified %d extended targets to calibrate" % len(ext_targetnames),
         )
         if skipcal:
             logger.info(
@@ -546,9 +520,7 @@ def main(
             t_pscal = t + ".pscal"
             call(["uvaver", "vis=%s" % t, "out=%s" % t_pscal])
 
-    logger.info(
-        "DONE!",
-    )
+    logger.info("DONE!")
 
 
 def cli():
