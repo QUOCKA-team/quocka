@@ -8,6 +8,7 @@ import logging
 import os
 import shutil
 import subprocess as sp
+from typing import NamedTuple
 
 import astropy.units as u
 import numpy as np
@@ -140,11 +141,29 @@ def get_noise(img_name):
     hdu.close()
     return rms
 
+QuockaConfig = NamedTuple(
+    "QuockaConfig",
+    [
+        ("atfiles", list),
+        ("if_use", int),
+        ("outdir", str),
+        ("rawclobber", bool),
+        ("outclobber", bool),
+        ("skipcal", bool),
+        ("prical", str),
+        ("seccal", str),
+        ("polcal", str),
+        ("setup_file", str),
+    ],
+)
 
-def main(
-    cfg,
-    setup_file,
-):
+
+
+def parse_config(
+    config_file: str,
+) -> QuockaConfig:
+    cfg = configparser.RawConfigParser()
+    cfg.read(config_file)
     # Initiate log file with options used
     logger.info(
         "Config settings:",
@@ -175,6 +194,7 @@ def main(
     prical = cfg.get("observation", "primary")
     seccal = cfg.get("observation", "secondary")
     polcal = cfg.get("observation", "polcal")
+    setup_file = cfg.get("input", "setup_file")
 
     # Set globals
     global NFBIN
@@ -184,11 +204,30 @@ def main(
     global N_S_ROUNDS
     N_S_ROUNDS = cfg.getint("output", "nsecondary")
 
+    return QuockaConfig(
+        atfiles=atfiles,
+        if_use=if_use,
+        outdir=outdir,
+        rawclobber=rawclobber,
+        outclobber=outclobber,
+        skipcal=skipcal,
+        prical=prical,
+        seccal=seccal,
+        polcal=polcal,
+        setup_file=setup_file,
+    )
+
+def load_visibilities(
+    outdir: str,
+    setup_file: str,
+    atfiles: list,
+    rawclobber: bool,
+    if_use: int,
+    ):
     if not os.path.exists(outdir):
-        logger.info(
-            "Creating directory %s" % outdir,
-        )
+        logger.info("Creating directory %s" % outdir,)
         os.makedirs(outdir)
+
     for line in open(setup_file):
         if line[0] == "#":
             continue
@@ -201,28 +240,44 @@ def main(
                 atfiles.remove(a)
     uvlist = ",".join(atfiles)
 
-    if not os.path.exists(outdir + "/dat.uv") or rawclobber:
-        if os.path.exists(outdir + "/dat.uv") and rawclobber:
-            logger.info(
-                "Removing existing dat.uv",
-            )
-            shutil.rmtree(outdir + "/dat.uv")
-        logger.info(
-            "Running ATLOD...",
-        )
-        call(
-            [
-                "atlod",
-                "in=%s" % uvlist,
-                "out=%s/dat.uv" % outdir,
-                f"ifsel={if_use}",
-                "options=birdie,noauto,xycorr,rfiflag,notsys",
-            ],
-        )
-    else:
+    if os.path.exists(outdir + "/dat.uv") and not rawclobber:
         logger.info(
             "Skipping atlod step",
         )
+        return
+
+    if os.path.exists(outdir + "/dat.uv") and rawclobber:
+        logger.info(
+            "Removing existing dat.uv",
+        )
+        shutil.rmtree(outdir + "/dat.uv")
+    logger.info(
+        "Running ATLOD...",
+    )
+    call(
+        [
+            "atlod",
+            "in=%s" % uvlist,
+            "out=%s/dat.uv" % outdir,
+            f"ifsel={if_use}",
+            "options=birdie,noauto,xycorr,rfiflag,notsys",
+        ],
+    )
+
+def main(
+    config_file: str,
+):
+    # Parse config file
+    config = parse_config(config_file)
+
+    # Load visibilities
+    load_visibilities(
+        outdir=config.outdir,
+        setup_file=config.setup_file,
+        atfiles=config.atfiles,
+        rawclobber=config.rawclobber,
+        if_use=config.if_use,
+    )
 
     # Now in outdir...
     os.chdir(outdir)
@@ -527,21 +582,12 @@ def cli():
     ap = argparse.ArgumentParser()
     ap.add_argument("config_file", help="Input configuration file")
     ap.add_argument(
-        "-s",
-        "--setup_file",
-        help="Name of text file with setup correlator file names included so that they can be ignored during the processing [default setup.txt]",
-        default="setup.txt",
-    )
-    ap.add_argument(
         "-l",
         "--log_file",
         help="Name of output log file [default log.txt]",
         default="log.txt",
     )
     args = ap.parse_args()
-
-    cfg = configparser.RawConfigParser()
-    cfg.read(args.config_file)
 
     fh = logging.FileHandler(args.log_file)
     fh.setLevel(logging.INFO)
@@ -556,7 +602,8 @@ def cli():
         args,
     )
 
-    main(cfg, args.setup_file)
+
+    main(args.config_file)
 
 
 if __name__ == "__main__":
