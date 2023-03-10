@@ -8,7 +8,7 @@ import logging
 import os
 import shutil
 import subprocess as sp
-from typing import NamedTuple, Tuple, List
+from typing import List, NamedTuple, Tuple
 
 import astropy.units as u
 import numpy as np
@@ -176,6 +176,7 @@ def get_noise(img_name: str) -> float:
     hdu.close()
     return rms
 
+
 QuockaConfig = NamedTuple(
     "QuockaConfig",
     [
@@ -261,13 +262,14 @@ def parse_config(
         N_S_ROUNDS=N_S_ROUNDS,
     )
 
+
 def load_visibilities(
     outdir: str,
     setup_file: str,
     atfiles: list,
     rawclobber: bool,
     if_use: int,
-    ) -> None:
+) -> None:
     """Load the visibilities from the correlator files
 
     Args:
@@ -278,7 +280,9 @@ def load_visibilities(
         if_use (int): IF to use
     """
     if not os.path.exists(outdir):
-        logger.info("Creating directory %s" % outdir,)
+        logger.info(
+            "Creating directory %s" % outdir,
+        )
         os.makedirs(outdir)
 
     for line in open(setup_file):
@@ -316,6 +320,7 @@ def load_visibilities(
             "options=birdie,noauto,xycorr,rfiflag,notsys",
         ],
     )
+
 
 def frequency_split(
     rawclobber: bool,
@@ -384,6 +389,7 @@ def frequency_split(
 
     return band_list
 
+
 QuockaSources = NamedTuple(
     "QuockaSources",
     [
@@ -393,6 +399,7 @@ QuockaSources = NamedTuple(
         ("targetnames", list),
     ],
 )
+
 
 def split_sources(
     prical: str,
@@ -464,6 +471,7 @@ def split_sources(
         polcalnames=polcalnames,
         targetnames=targetnames,
     )
+
 
 def flag_and_calibrate(
     skipcal: bool,
@@ -640,8 +648,7 @@ def flag_and_calibrate(
 
     while len(seccalnames) > 1:
         logger.info(
-            "Merging gain table for %s into %s ..."
-            % (seccalnames[-1], seccalnames[0]),
+            "Merging gain table for %s into %s ..." % (seccalnames[-1], seccalnames[0]),
         )
         call(
             [
@@ -681,6 +688,7 @@ def flag_and_calibrate(
         t_pscal = t + ".pscal"
         call(["uvaver", "vis=%s" % t, "out=%s" % t_pscal])
 
+
 def main(
     config_file: str,
 ):
@@ -702,7 +710,6 @@ def main(
         rawclobber=config.rawclobber,
         outclobber=config.outclobber,
     )
-
 
     slist = sorted(glob.glob("[j012]*.[257]???"))
 
@@ -755,7 +762,6 @@ def cli():
     logger.info(
         args,
     )
-
 
     main(args.config_file)
 
