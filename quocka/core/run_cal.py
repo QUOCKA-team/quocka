@@ -8,7 +8,7 @@ import logging
 import os
 import shutil
 import subprocess as sp
-from typing import NamedTuple
+from typing import NamedTuple, Tuple, List
 
 import astropy.units as u
 import numpy as np
@@ -28,7 +28,18 @@ logging.basicConfig(format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger.setLevel(logging.INFO)
 
 
-def get_band_from_vis(vis):
+def get_band_from_vis(vis: str) -> Tuple[List[int], int]:
+    """Get the band from the vis file
+
+    Args:
+        vis (str): Visibility file
+
+    Raises:
+        ValueError: If the band cannot be found
+
+    Returns:
+        Tuple[List[int], int]: List of bands and number of bands
+    """
     # Get the band from the vis file
     band_lut = {
         3.124: 2100,
@@ -68,6 +79,11 @@ def get_band_from_vis(vis):
 
 
 def call(*args, **kwargs):
+    """Wrapper for subprocess.Popen to log the command and output
+
+    All arguments are passed to subprocess.Popen
+
+    """
     # Call a subprocess, print the command to stdout
     logger.info(" ".join(args[0]))
     process = sp.Popen(*args, stdout=sp.PIPE, stderr=sp.STDOUT, **kwargs)
@@ -82,9 +98,15 @@ def call(*args, **kwargs):
 
 
 def flag(
-    src,
-):
-    # Pgflagging lines, following the ATCA users guide. Pgflagging needs to be done on all the calibrators and targets.
+    src: str,
+) -> None:
+    """Flag the data
+
+    Args:
+        src (str): Visibility file to flag
+    """
+    # Pgflagging lines, following the ATCA users guide.
+    # Pgflagging needs to be done on all the calibrators and targets.
     call(
         [
             "pgflag",
@@ -118,8 +140,13 @@ def flag(
 
 
 def flag_v(
-    src,
-):
+    src: str,
+) -> None:
+    """Flag the data (stokes V only)
+
+    Args:
+        src (str): Visibility file to flag
+    """
     # pgflagging, stokes V only.
     call(
         [
@@ -133,7 +160,15 @@ def flag_v(
     )
 
 
-def get_noise(img_name):
+def get_noise(img_name: str) -> float:
+    """Extract the noise of an image
+
+    Args:
+        img_name (str): FITS image
+
+    Returns:
+        float: RMS of the image
+    """
     # Get the noise of an image
     hdu = fits.open(img_name)
     data = hdu[0].data[0, 0]
@@ -161,10 +196,17 @@ QuockaConfig = NamedTuple(
 )
 
 
-
 def parse_config(
     config_file: str,
 ) -> QuockaConfig:
+    """Parse the config file
+
+    Args:
+        config_file (str): Path to the config file
+
+    Returns:
+        QuockaConfig: NamedTuple with the config options
+    """
     cfg = configparser.RawConfigParser()
     cfg.read(config_file)
     # Initiate log file with options used
@@ -225,7 +267,16 @@ def load_visibilities(
     atfiles: list,
     rawclobber: bool,
     if_use: int,
-    ):
+    ) -> None:
+    """Load the visibilities from the correlator files
+
+    Args:
+        outdir (str): Output directory
+        setup_file (str): Setup file
+        atfiles (list): correlator files
+        rawclobber (bool): Overwrite existing files
+        if_use (int): IF to use
+    """
     if not os.path.exists(outdir):
         logger.info("Creating directory %s" % outdir,)
         os.makedirs(outdir)
@@ -270,6 +321,15 @@ def frequency_split(
     rawclobber: bool,
     outclobber: bool,
 ) -> list:
+    """Split the data into frequency bands
+
+    Args:
+        rawclobber (bool): Overwrite existing files
+        outclobber (bool): Overwrite existing files
+
+    Returns:
+        list: List of frequency bands
+    """
     # Now we need a uvsplit into frequency bands
     call(
         [
@@ -341,6 +401,22 @@ def split_sources(
     frqb: int,
     slist: list,
 ) -> QuockaSources:
+    """Split the sources into calibrators and targets for a given frequency
+
+    Args:
+        prical (str): Primary calibrator
+        seccal (str): Secondary calibrator
+        polcal (str): Polarization calibrator
+        frqb (int): Frequency band
+        slist (list): List of sources
+
+    Raises:
+        FileNotFoundError: If the primary calibrator is not found
+        FileNotFoundError: If the secondary calibrator is not found
+
+    Returns:
+        QuockaSources: Named tuple with the names of the calibrators and targets
+    """
     logger.info(
         "\n\n##########\nWorking on frequency: %s\n##########\n\n" % (frqb),
     )
@@ -399,6 +475,19 @@ def flag_and_calibrate(
     N_S_ROUNDS: int,
     targetnames: list,
 ) -> None:
+    """The meat and potatoes of the pipeline
+    Apply flagging and calibration to the data
+
+    Args:
+        skipcal (bool): Skip flagging and calibration
+        prical (str): Primary calibrator
+        pricalname (str): Primary calibrator name
+        N_P_ROUNDS (int): Number of primary calibrator flag/cal rounds
+        NFBIN (int): Number of frequency bins
+        seccalnames (list): Secondary calibrator names
+        N_S_ROUNDS (int): Number of secondary calibrator flag/cal rounds
+        targetnames (list): Names of the targets
+    """
     if skipcal:
         logger.info(
             "Skipping flagging and calibration steps on user request.",
