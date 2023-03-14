@@ -453,6 +453,13 @@ def split_sources(
     logger.info(
         "Identified %d polarization calibrators" % len(polcalnames),
     )
+    if len(polcalnames) > 1:
+        logger.critical(
+            """Very accurate circular polarization calibration not supported yet!
+            These calibrators will be treated as targets
+            """
+        )
+        targetnames.extend(polcalnames)
     logger.info(
         "Identified %d compact targets to calibrate" % len(targetnames),
     )
