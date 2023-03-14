@@ -27,6 +27,26 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger.setLevel(logging.INFO)
 
+class QuockaConfig(NamedTuple):
+        atfiles: list
+        if_use: int
+        outdir: str
+        rawclobber: bool
+        outclobber: bool
+        skipcal: bool
+        prical: str
+        seccal: str
+        polcal: str
+        setup_file: str
+        NFBIN: int
+        N_P_ROUNDS: int
+        N_S_ROUNDS: int
+
+class QuockaSources(NamedTuple):
+        pricalname: str
+        seccalnames: list
+        polcalnames: list
+        targetnames: list
 
 def get_band_from_vis(vis: str) -> Tuple[List[int], int]:
     """Get the band from the vis file
@@ -177,24 +197,7 @@ def get_noise(img_name: str) -> float:
     return rms
 
 
-QuockaConfig = NamedTuple(
-    "QuockaConfig",
-    [
-        ("atfiles", list),
-        ("if_use", int),
-        ("outdir", str),
-        ("rawclobber", bool),
-        ("outclobber", bool),
-        ("skipcal", bool),
-        ("prical", str),
-        ("seccal", str),
-        ("polcal", str),
-        ("setup_file", str),
-        ("NFBIN", int),
-        ("N_P_ROUNDS", int),
-        ("N_S_ROUNDS", int),
-    ],
-)
+
 
 
 def parse_config(
@@ -388,17 +391,6 @@ def frequency_split(
         )
 
     return band_list
-
-
-QuockaSources = NamedTuple(
-    "QuockaSources",
-    [
-        ("pricalname", str),
-        ("seccalnames", list),
-        ("polcalnames", list),
-        ("targetnames", list),
-    ],
-)
 
 
 def split_sources(
