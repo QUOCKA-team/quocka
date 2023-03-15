@@ -478,6 +478,17 @@ def primary_cal(
     N_P_ROUNDS: int,
     NFBIN: int,
 ) -> str:
+    """Derive bandpass and gain calibration for the primary calibrator
+
+    Args:
+        prical (str): Primary calibrator
+        pricalname (str): Source name of the primary calibrator
+        N_P_ROUNDS (int): Number of flag / cal rounds
+        NFBIN (int): Number of frequency bins
+
+    Returns:
+        str: Calibrated primary calibrator name
+    """
     logger.info(
         "Initial flagging round proceeding...",
     )
@@ -565,6 +576,17 @@ def secondary_cal(
     N_S_ROUNDS: int,
     NFBIN: int,
 ) -> str:
+    """Derive the gain and phase calibration for the secondary calibrator
+
+    Args:
+        pricalname (str): Primary calibrator name
+        seccalname (str): Secondary calibrator name
+        N_S_ROUNDS (int): Number of flag / cal rounds
+        NFBIN (int): Number of frequency bins
+
+    Returns:
+        str: Calibrated secondary calibrator name
+    """
     logger.info(
         "Transferring to compact-source secondary %s..." % seccalname,
     )
@@ -633,7 +655,15 @@ def secondary_cal(
 
 def merge_secondary_cals(
     seccalnames: List[str],
-):
+) -> str:
+    """Merge secondary calibrator tables
+
+    Args:
+        seccalnames (List[str]): List of secondary calibrator names
+
+    Returns:
+        str: Merged secondary calibrator name
+    """
     while len(seccalnames) > 1:
         logger.info(
             "Merging gain table for %s into %s ..." % (seccalnames[-1], seccalnames[0]),
@@ -659,6 +689,15 @@ def target_cal(
     target: str,
     seccalname: str,
 ) -> str:
+    """Apply the calibration to the target
+
+    Args:
+        target (str): Target name
+        seccalname (str): Secondary calibrator name
+
+    Returns:
+        str: Calibrated target name
+    """
     logger.info(
         "Working on source %s" % target,
     )
