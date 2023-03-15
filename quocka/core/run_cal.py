@@ -471,40 +471,17 @@ def split_sources(
         targetnames=targetnames,
     )
 
-
-def flag_and_calibrate(
-    skipcal: bool,
+def primary_cal(
     prical: str,
     pricalname: str,
     N_P_ROUNDS: int,
     NFBIN: int,
-    seccalnames: list,
-    N_S_ROUNDS: int,
-    targetnames: list,
-) -> None:
-    """The meat and potatoes of the pipeline
-    Apply flagging and calibration to the data
-
-    Args:
-        skipcal (bool): Skip flagging and calibration
-        prical (str): Primary calibrator
-        pricalname (str): Primary calibrator name
-        N_P_ROUNDS (int): Number of primary calibrator flag/cal rounds
-        NFBIN (int): Number of frequency bins
-        seccalnames (list): Secondary calibrator names
-        N_S_ROUNDS (int): Number of secondary calibrator flag/cal rounds
-        targetnames (list): Names of the targets
-    """
-    if skipcal:
-        logger.info(
-            "Skipping flagging and calibration steps on user request.",
-        )
-        return
+) -> str:
     logger.info(
         "Initial flagging round proceeding...",
     )
 
-    # Flagging/calibrating the primary calibrator 1934-638.
+
     logger.info(
         "Calibration of primary cal (%s) proceeding ..." % prical,
     )
@@ -579,72 +556,82 @@ def flag_and_calibrate(
             "%s_freq_amp.ps" % (pricalname),
         ],
     )
+    return pricalname
 
-    # Move on to the secondary calibrator
-    for seccalname in seccalnames:
-        logger.info(
-            "Transferring to compact-source secondary %s..." % seccalname,
+def secondary_cal(
+        pricalname: str,
+        seccalname: str,
+        N_S_ROUNDS: int,
+        NFBIN: int,
+) -> str:
+    logger.info(
+        "Transferring to compact-source secondary %s..." % seccalname,
+    )
+    call(
+        ["gpcopy", "vis=%s" % pricalname, "out=%s" % seccalname],
+    )
+    # Flag / cal loops on secondary
+    for _ in range(N_S_ROUNDS):
+        flag(
+            seccalname,
         )
-        call(
-            ["gpcopy", "vis=%s" % pricalname, "out=%s" % seccalname],
-        )
-        # Flag / cal loops on secondary
-        for _ in range(N_S_ROUNDS):
-            flag(
-                seccalname,
-            )
-            call(
-                [
-                    "gpcal",
-                    "vis=%s" % seccalname,
-                    "interval=0.1",
-                    "nfbin=%d" % NFBIN,
-                    "options=xyvary,qusolve",
-                ],
-            )
-
-        # Plot results before boot
         call(
             [
-                "uvfmeas",
+                "gpcal",
                 "vis=%s" % seccalname,
-                "stokes=i",
-                "order=2",
-                "options=log,mfflux",
-                "device=%s_uvfmeas_preboot.ps/ps" % (seccalname),
-                "feval=2.1",
-            ],
-        )
-        call(
-            [
-                "ps2pdf",
-                "%s_uvfmeas_preboot.ps" % (seccalname),
+                "interval=0.1",
+                "nfbin=%d" % NFBIN,
+                "options=xyvary,qusolve",
             ],
         )
 
-        # boot the flux
-        call(
-            ["gpboot", "vis=%s" % seccalname, "cal=%s" % pricalname],
-        )
-        # Plot results after boot
-        call(
-            [
-                "uvfmeas",
-                "vis=%s" % seccalname,
-                "stokes=i",
-                "order=2",
-                "options=log,mfflux",
-                "device=%s_uvfmeas_postboot.ps/ps" % (seccalname),
-                "feval=2.1",
-            ],
-        )
-        call(
-            [
-                "ps2pdf",
-                "%s_uvfmeas_postboot.ps" % (seccalname),
-            ],
-        )
+    # Plot results before boot
+    call(
+        [
+            "uvfmeas",
+            "vis=%s" % seccalname,
+            "stokes=i",
+            "order=2",
+            "options=log,mfflux",
+            "device=%s_uvfmeas_preboot.ps/ps" % (seccalname),
+            "feval=2.1",
+        ],
+    )
+    call(
+        [
+            "ps2pdf",
+            "%s_uvfmeas_preboot.ps" % (seccalname),
+        ],
+    )
 
+    # boot the flux
+    call(
+        ["gpboot", "vis=%s" % seccalname, "cal=%s" % pricalname],
+    )
+    # Plot results after boot
+    call(
+        [
+            "uvfmeas",
+            "vis=%s" % seccalname,
+            "stokes=i",
+            "order=2",
+            "options=log,mfflux",
+            "device=%s_uvfmeas_postboot.ps/ps" % (seccalname),
+            "feval=2.1",
+        ],
+    )
+    call(
+        [
+            "ps2pdf",
+            "%s_uvfmeas_postboot.ps" % (seccalname),
+        ],
+    )
+
+    return seccalname
+
+def merge_secondary_cals(
+        seccalnames: List[str],
+    ):
     while len(seccalnames) > 1:
         logger.info(
             "Merging gain table for %s into %s ..." % (seccalnames[-1], seccalnames[0]),
@@ -662,30 +649,35 @@ def flag_and_calibrate(
     logger.info(
         "Using gains from %s ..." % (seccalname),
     )
-    logger.info(
-        "\n\n##########\nApplying calibration to compact sources...\n##########\n\n",
-    )
-    for t in targetnames:
-        logger.info(
-            "Working on source %s" % t,
-        )
-        # Move on to the target!
-        call(
-            ["gpcopy", "vis=%s" % seccalname, "out=%s" % t],
-        )
-        flag(
-            t,
-        )
-        flag(
-            t,
-        )
-        logger.info("Writing source flag and pol info")
-        call(["uvfstats", "vis=%s" % t])
-        call(["uvfstats", "vis=%s" % t, "mode=channel"])
 
-        # Apply the solutions before we do selfcal
-        t_pscal = t + ".pscal"
-        call(["uvaver", "vis=%s" % t, "out=%s" % t_pscal])
+    return seccalname
+
+def target_cal(
+        target: str,
+        seccalname: str,
+) -> str:
+    logger.info(
+        "Working on source %s" % target,
+    )
+
+    call(
+        ["gpcopy", "vis=%s" % seccalname, "out=%s" % target],
+    )
+    flag(
+        target,
+    )
+    flag(
+        target,
+    )
+    logger.info("Writing source flag and pol info")
+    call(["uvfstats", "vis=%s" % target])
+    call(["uvfstats", "vis=%s" % target, "mode=channel"])
+
+    # Apply the solutions before we do selfcal
+    t_pscal = target + ".pscal"
+    call(["uvaver", "vis=%s" % target, "out=%s" % t_pscal])
+
+    return t_pscal
 
 
 def main(
@@ -724,16 +716,41 @@ def main(
             slist=slist,
             frqb=frqb,
         )
-        flag_and_calibrate(
-            skipcal=config.skipcal,
+        if config.skipcal:
+            continue
+        # Flagging/calibrating the primary calibrator 1934-638.
+        pricalname_cal = primary_cal(
             prical=config.prical,
             pricalname=sources.pricalname,
             N_P_ROUNDS=config.N_P_ROUNDS,
             NFBIN=config.NFBIN,
-            seccalnames=sources.seccalnames,
-            N_S_ROUNDS=config.N_S_ROUNDS,
-            targetnames=sources.targetnames,
         )
+        # Move on to the secondary calibrators
+        secal_list = []
+        for seccalname in sources.seccalnames:
+            secalname_cal = secondary_cal(
+                pricalname=pricalname_cal,
+                seccalname=seccalname,
+                N_S_ROUNDS=config.N_S_ROUNDS,
+                NFBIN=config.NFBIN,
+            )
+            secal_list.append(secalname_cal)
+
+        # Merge the secondary calibrators
+        merged_cal = merge_secondary_cals(
+            seccalnames=secal_list,
+        )
+        # Move on to the target!
+        logger.info(
+        "\n\n##########\nApplying calibration to target sources...\n##########\n\n",
+        )
+        target_list = []
+        for target in sources.targetnames:
+            targetname_cal = target_cal(
+                target=target,
+                seccalname=merged_cal,
+            )
+            target_list.append(targetname_cal)
 
     logger.info("DONE!")
 
