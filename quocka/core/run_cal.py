@@ -471,6 +471,7 @@ def split_sources(
         targetnames=targetnames,
     )
 
+
 def primary_cal(
     prical: str,
     pricalname: str,
@@ -480,7 +481,6 @@ def primary_cal(
     logger.info(
         "Initial flagging round proceeding...",
     )
-
 
     logger.info(
         "Calibration of primary cal (%s) proceeding ..." % prical,
@@ -558,11 +558,12 @@ def primary_cal(
     )
     return pricalname
 
+
 def secondary_cal(
-        pricalname: str,
-        seccalname: str,
-        N_S_ROUNDS: int,
-        NFBIN: int,
+    pricalname: str,
+    seccalname: str,
+    N_S_ROUNDS: int,
+    NFBIN: int,
 ) -> str:
     logger.info(
         "Transferring to compact-source secondary %s..." % seccalname,
@@ -629,9 +630,10 @@ def secondary_cal(
 
     return seccalname
 
+
 def merge_secondary_cals(
-        seccalnames: List[str],
-    ):
+    seccalnames: List[str],
+):
     while len(seccalnames) > 1:
         logger.info(
             "Merging gain table for %s into %s ..." % (seccalnames[-1], seccalnames[0]),
@@ -652,9 +654,10 @@ def merge_secondary_cals(
 
     return seccalname
 
+
 def target_cal(
-        target: str,
-        seccalname: str,
+    target: str,
+    seccalname: str,
 ) -> str:
     logger.info(
         "Working on source %s" % target,
@@ -742,7 +745,7 @@ def main(
         )
         # Move on to the target!
         logger.info(
-        "\n\n##########\nApplying calibration to target sources...\n##########\n\n",
+            "\n\n##########\nApplying calibration to target sources...\n##########\n\n",
         )
         target_list = []
         for target in sources.targetnames:
