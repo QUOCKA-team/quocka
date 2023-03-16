@@ -45,6 +45,7 @@ class QuockaConfig(NamedTuple):
     NFBIN: int
     N_P_ROUNDS: int
     N_S_ROUNDS: int
+    gpaver_interval: float
 
 
 class QuockaSources(NamedTuple):
@@ -251,6 +252,7 @@ def parse_config(
     NFBIN = cfg.getint("output", "nfbin")
     N_P_ROUNDS = cfg.getint("output", "nprimary")
     N_S_ROUNDS = cfg.getint("output", "nsecondary")
+    gpaver_interval = cfg.getfloat("output", "gpaver_interval")
 
     return QuockaConfig(
         atfiles=atfiles,
@@ -266,6 +268,7 @@ def parse_config(
         NFBIN=NFBIN,
         N_P_ROUNDS=N_P_ROUNDS,
         N_S_ROUNDS=N_S_ROUNDS,
+        gpaver_interval=gpaver_interval,
     )
 
 @delayed()
@@ -726,6 +729,7 @@ def target_cal(
     seccalname: str,
     outdir: str,
     clobber: bool = False,
+    gpaver_interval: float = 0,
 ) -> str:
     """Apply the calibration to the target
 
@@ -745,6 +749,14 @@ def target_cal(
     call(
         ["gpcopy", "vis=%s" % seccalname, "out=%s" % target],
     )
+    # Apply averaging to the gain solutions if requested
+    if gpaver_interval > 0:
+        logger.info(
+            f"Averaging secondary cal gain solutions over {gpaver_interval} min interval..."
+        )
+        call(
+                ["gpaver", f"interval={gpaver_interval}", f"vis={seccalname}", "options=scalar"],
+        )
     flag(
         target,
     )
@@ -841,6 +853,8 @@ def main(
                 target=target,
                 seccalname=merged_cal,
                 outdir=config.outdir,
+                clobber=config.outclobber,
+                gpaver_interval=config.gpaver_interval,
             )
             target_list.append(targetname_cal)
 
