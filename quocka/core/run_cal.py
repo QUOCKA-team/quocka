@@ -886,6 +886,9 @@ def cli():
             "Dask settings:",
         )
         logger.info(
+            f"Dask dashboard available at: {client.dashboard_link}",
+        )
+        logger.info(
             client,
         )
         main(args.config_file)
