@@ -10,17 +10,13 @@ import shutil
 import subprocess as sp
 from typing import List, NamedTuple, Tuple
 
-import astropy.units as u
 import numpy as np
-from astropy.coordinates import SkyCoord, search_around_sky
 from astropy.io import fits
 from astropy.table import Table
-from astropy.wcs import WCS
 from braceexpand import braceexpand
 from dask import compute, delayed
 from dask.distributed import Client
 from IPython import embed
-from numpy import unique
 
 LOG_FORMAT = (
     "%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s"
