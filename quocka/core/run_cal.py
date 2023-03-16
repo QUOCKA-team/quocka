@@ -55,6 +55,16 @@ class QuockaSources(NamedTuple):
     targetnames: list
 
 
+def single_compute(*args, **kwargs):
+    """Compute a single task
+
+    Args:
+        *args: Arguments to pass to dask.compute
+        **kwargs: Keyword arguments to pass to dask.compute
+    """
+    return compute(*args, **kwargs)[0]
+
+
 def get_band_from_vis(vis: str) -> Tuple[List[int], int]:
     """Get the band from the vis file
 
@@ -806,7 +816,7 @@ def main(
 
     slist = find_sources(config.outdir)
 
-    for frqb in compute(band_list)[0]: # Need to select first element of returned tuple
+    for frqb in single_compute(band_list):
         sources = split_sources(
             prical=config.prical,
             seccal=config.seccal,
@@ -828,7 +838,7 @@ def main(
         )
         # Move on to the secondary calibrators
         secal_list = []
-        for seccalname in compute(sources.seccalnames)[0]:
+        for seccalname in single_compute(sources.seccalnames):
             secalname_cal = secondary_cal(
                 pricalname=pricalname_cal,
                 seccalname=seccalname,
@@ -848,7 +858,7 @@ def main(
             "\n\n##########\nApplying calibration to target sources...\n##########\n\n",
         )
         target_list = []
-        for target in compute(sources.targetnames)[0]:
+        for target in single_compute(sources.targetnames):
             targetname_cal = target_cal(
                 target=target,
                 seccalname=merged_cal,
@@ -858,7 +868,7 @@ def main(
             )
             target_list.append(targetname_cal)
 
-        targets = compute(target_list)[0]
+        targets = single_compute(target_list)
         logger.info(
             "\n\n##########\nFinished calibrating target sources!\n##########\n\n",
         )
