@@ -52,7 +52,7 @@ class QuockaSources(NamedTuple):
     polcalnames: list
     targetnames: list
 
-
+@delayed()
 def convert_to_ms(
         vis: str,
         outdir: str,
@@ -291,7 +291,7 @@ def parse_config(
     N_P_ROUNDS = cfg.getint("output", "nprimary")
     N_S_ROUNDS = cfg.getint("output", "nsecondary")
     gpaver_interval = cfg.getfloat("output", "gpaver_interval")
-    convert_ms = cfg.getboolean("output", "convert_ms")
+    convert_ms = cfg.getboolean("output", "convert_to_ms")
 
     return QuockaConfig(
         atfiles=atfiles,
