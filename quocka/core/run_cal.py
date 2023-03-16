@@ -14,6 +14,7 @@ import numpy as np
 from astropy.io import fits
 from astropy.table import Table
 from braceexpand import braceexpand
+from casatasks import importuvfits
 from dask import compute, delayed
 from dask.distributed import Client
 from IPython import embed
@@ -42,6 +43,7 @@ class QuockaConfig(NamedTuple):
     N_P_ROUNDS: int
     N_S_ROUNDS: int
     gpaver_interval: float
+    convert_ms: bool
 
 
 class QuockaSources(NamedTuple):
@@ -49,6 +51,36 @@ class QuockaSources(NamedTuple):
     seccalnames: list
     polcalnames: list
     targetnames: list
+
+
+def convert_to_ms(
+        vis: str,
+        outdir: str,
+    ) -> str:
+    """Convert a uvfits file to a measurement set
+
+    Args:
+        vis (str): Visibility file to convert
+    """
+    # Now in outdir
+    os.chdir(outdir)
+    # Convert vis to uvfits
+    uvfits = f"{vis}.uv"
+    call(
+        [
+            "fits",
+            f"vis={vis}",
+            f"out={uvfits}",
+            "op=uvout",
+        ],
+    )
+    # Convert uvfits to ms
+    ms = f"{vis}.ms"
+    importuvfits(
+        fitsfile=uvfits,
+        vis=ms,
+    )
+    return ms
 
 
 def single_compute(*args, **kwargs):
@@ -259,6 +291,7 @@ def parse_config(
     N_P_ROUNDS = cfg.getint("output", "nprimary")
     N_S_ROUNDS = cfg.getint("output", "nsecondary")
     gpaver_interval = cfg.getfloat("output", "gpaver_interval")
+    convert_ms = cfg.getboolean("output", "convert_ms")
 
     return QuockaConfig(
         atfiles=atfiles,
@@ -275,6 +308,7 @@ def parse_config(
         N_P_ROUNDS=N_P_ROUNDS,
         N_S_ROUNDS=N_S_ROUNDS,
         gpaver_interval=gpaver_interval,
+        convert_ms=convert_ms,
     )
 
 
@@ -875,7 +909,14 @@ def main(
                 clobber=config.outclobber,
                 gpaver_interval=config.gpaver_interval,
             )
-            target_list.append(targetname_cal)
+            if config.convert_ms:
+                targetname_ms = convert_to_ms(
+                    targetname_cal,
+                    outdir=config.outdir,
+                )
+                target_list.append(targetname_ms)
+            else:
+                target_list.append(targetname_cal)
 
         targets = single_compute(target_list)
         logger.info(

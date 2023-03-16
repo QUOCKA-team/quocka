@@ -28,6 +28,7 @@ reproject = "*"
 tqdm = "*"
 aplpy = "*"
 ipython = "*"
+casatasks = "*"
 
 [tool.poetry.group.dev.dependencies]
 black = "^22"
