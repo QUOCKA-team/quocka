@@ -9,10 +9,7 @@ import os
 import shutil
 import subprocess as sp
 from typing import List, NamedTuple, Tuple
-from IPython import embed
 
-from dask import delayed, compute
-from dask.distributed import Client
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord, search_around_sky
@@ -20,6 +17,9 @@ from astropy.io import fits
 from astropy.table import Table
 from astropy.wcs import WCS
 from braceexpand import braceexpand
+from dask import compute, delayed
+from dask.distributed import Client
+from IPython import embed
 from numpy import unique
 
 LOG_FORMAT = (
@@ -281,6 +281,7 @@ def parse_config(
         gpaver_interval=gpaver_interval,
     )
 
+
 @delayed()
 def load_visibilities(
     outdir: str,
@@ -344,6 +345,7 @@ def load_visibilities(
     )
 
     return "dat.uv"
+
 
 @delayed()
 def frequency_split(
@@ -419,6 +421,7 @@ def frequency_split(
 
     return band_list
 
+
 @delayed()
 def find_sources(outdir: str) -> List[str]:
     # Now in outdir...
@@ -428,6 +431,7 @@ def find_sources(outdir: str) -> List[str]:
         "Working on %d sources" % len(slist),
     )
     return slist
+
 
 @delayed()
 def split_sources(
@@ -510,6 +514,7 @@ def split_sources(
         polcalnames=polcalnames,
         targetnames=targetnames,
     )
+
 
 @delayed()
 def primary_cal(
@@ -612,6 +617,7 @@ def primary_cal(
     )
     return pricalname
 
+
 @delayed()
 def secondary_cal(
     pricalname: str,
@@ -698,6 +704,7 @@ def secondary_cal(
 
     return seccalname
 
+
 @delayed()
 def merge_secondary_cals(
     seccalnames: List[str],
@@ -733,6 +740,7 @@ def merge_secondary_cals(
 
     return seccalname
 
+
 @delayed()
 def target_cal(
     target: str,
@@ -765,7 +773,12 @@ def target_cal(
             f"Averaging secondary cal gain solutions over {gpaver_interval} min interval..."
         )
         call(
-                ["gpaver", f"interval={gpaver_interval}", f"vis={seccalname}", "options=scalar"],
+            [
+                "gpaver",
+                f"interval={gpaver_interval}",
+                f"vis={seccalname}",
+                "options=scalar",
+            ],
         )
     flag(
         target,
