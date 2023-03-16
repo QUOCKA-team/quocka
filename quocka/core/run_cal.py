@@ -69,7 +69,7 @@ def convert_to_ms(
     call(
         [
             "fits",
-            f"vis={vis}",
+            f"in={vis}",
             f"out={uvfits}",
             "op=uvout",
         ],
