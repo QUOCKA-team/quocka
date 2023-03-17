@@ -812,10 +812,6 @@ def target_cal(
     logger.info(
         "Working on source %s" % target,
     )
-
-    call(
-        ["gpcopy", "vis=%s" % seccalname, "out=%s" % target],
-    )
     # Apply averaging to the gain solutions if requested
     if gpaver_interval > 0:
         logger.info(
@@ -829,6 +825,9 @@ def target_cal(
                 "options=scalar",
             ],
         )
+    call(
+        ["gpcopy", "vis=%s" % seccalname, "out=%s" % target],
+    )
     flag(
         target,
     )
