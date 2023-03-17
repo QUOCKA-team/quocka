@@ -14,7 +14,7 @@ import numpy as np
 from astropy.io import fits
 from astropy.table import Table
 from braceexpand import braceexpand
-from casatasks import importuvfits
+from casatasks import importuvfits, importmiriad
 from dask import compute, delayed
 from dask.distributed import Client
 from IPython import embed
@@ -64,6 +64,11 @@ def convert_to_ms(
     """
     # Now in outdir
     os.chdir(outdir)
+
+    logger.critical(f"Converting {vis} to ms")
+    logger.critical("This is experimental and may not work as expected!")
+
+    # OPTION 1: Convert vis to uvfits - convert uvfits to ms
     # Convert vis to uvfits
     uvfits = f"{vis}.uv"
     call(
@@ -75,9 +80,16 @@ def convert_to_ms(
         ],
     )
     # Convert uvfits to ms
-    ms = f"{vis}.ms"
+    ms = f"{uvfits}.ms"
     importuvfits(
         fitsfile=uvfits,
+        vis=ms,
+    )
+
+     # OPTION 2: Convert vis to ms directly
+    ms = f"{vis}.ms"
+    importmiriad(
+        mirfile=vis,
         vis=ms,
     )
     return ms
