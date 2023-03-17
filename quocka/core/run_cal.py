@@ -81,6 +81,9 @@ def convert_to_ms(
     )
     # Convert uvfits to ms
     ms = f"{uvfits}.ms"
+    if os.path.exists(ms):
+        logger.warning(f"Removing {ms}")
+        shutil.rmtree(ms)
     importuvfits(
         fitsfile=uvfits,
         vis=ms,
@@ -88,6 +91,10 @@ def convert_to_ms(
 
      # OPTION 2: Convert vis to ms directly
     ms = f"{vis}.ms"
+    if os.path.exists(ms):
+        logger.warning(f"Removing {ms}")
+        shutil.rmtree(ms)
+
     importmiriad(
         mirfile=vis,
         vis=ms,
