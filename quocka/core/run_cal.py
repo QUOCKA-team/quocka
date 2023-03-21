@@ -959,6 +959,24 @@ def cli():
         help="Name of output log file [default log.txt]",
         default="log.txt",
     )
+    ap.add_argument(
+        "--nworkers",
+        help="Number of workers [default None - use all cores]",
+        default=None,
+        type=int,
+    )
+    ap.add_argument(
+        "--threads-per-worker",
+        help="Number of threads per worker [default None - dask decides]",
+        default=None,
+        type=int,
+    )
+    ap.add_argument(
+        "--memory-limit",
+        help="Memory required per worker e.g. 1GB [default 'auto' - divide by number of workers]",
+        default="auto",
+        type=str,
+    )
     args = ap.parse_args()
 
     fh = logging.FileHandler(args.log_file)
@@ -973,7 +991,11 @@ def cli():
     logger.info(
         args,
     )
-    with Client(threads_per_worker=1) as client:
+    with Client(
+        threads_per_worker=args.threds_per_worker,
+        n_workers=args.nworkers,
+        memory_limit=args.memory_limit,
+    ) as client:
         logger.info(
             "Dask settings:",
         )
