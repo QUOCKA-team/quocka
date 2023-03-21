@@ -86,7 +86,6 @@ ilist75.sort()
 stokes_file = open(sname + ".txt", "w")
 
 for i_name in ilist21:
-
     if any(freq in i_name for freq in ["0101", "1941"]):
         continue
 
@@ -149,7 +148,6 @@ for i_name in ilist21:
 
 
 for i_name in ilist55:
-
     if any(freq in i_name for freq in ["0101", "1941"]):
         continue
 
@@ -210,7 +208,6 @@ for i_name in ilist55:
     )
 
 for i_name in ilist75:
-
     if any(freq in i_name for freq in ["0101", "1941"]):
         continue
 
