@@ -53,11 +53,11 @@ class QuockaSources(NamedTuple):
     targetnames: list
 
 
-@delayed()
+@delayed(nout=2)
 def convert_to_ms(
     vis: str,
     outdir: str,
-) -> str:
+) -> List[str]:
     """Convert a uvfits file to a measurement set
 
     Args:
@@ -71,6 +71,7 @@ def convert_to_ms(
 
     # OPTION 1: Convert vis to uvfits - convert uvfits to ms
     # Convert vis to uvfits
+    logger.info("Trying miriad -> uvfits -> ms")
     uvfits = f"{vis}.uv"
     call(
         [
@@ -81,26 +82,33 @@ def convert_to_ms(
         ],
     )
     # Convert uvfits to ms
-    ms = f"{uvfits}.ms"
-    if os.path.exists(ms):
-        logger.warning(f"Removing {ms}")
-        shutil.rmtree(ms)
-    importuvfits(
-        fitsfile=uvfits,
-        vis=ms,
-    )
+    ms_1 = f"{uvfits}.ms"
+    try:
+        if os.path.exists(ms_1):
+            logger.warning(f"Removing {ms_1}")
+            shutil.rmtree(ms_1)
+        importuvfits(
+            fitsfile=uvfits,
+            vis=ms_1,
+        )
+    except:
+        logger.info("Failed to convert to uvfits")
 
+    logger.info("Trying miriad -> ms")
     # OPTION 2: Convert vis to ms directly
-    ms = f"{vis}.ms"
-    if os.path.exists(ms):
-        logger.warning(f"Removing {ms}")
-        shutil.rmtree(ms)
+    ms_2 = f"{vis}.ms"
+    if os.path.exists(ms_2):
+        logger.warning(f"Removing {ms_2}")
+        shutil.rmtree(ms_2)
+    try:
+        importmiriad(
+            mirfile=vis,
+            vis=ms_2,
+        )
+    except:
+        logger.info("Failed to convert to ms")
 
-    importmiriad(
-        mirfile=vis,
-        vis=ms,
-    )
-    return ms
+    return [ms_1, ms_2]
 
 
 def single_compute(*args, **kwargs):
@@ -308,18 +316,18 @@ def parse_config(
     if_use = cfg.getint("input", "if_use", fallback=None)
     outdir = os.path.abspath(cfg.get("output", "dir"))
     rawclobber = cfg.getboolean("output", "rawclobber", fallback=True )
-    outclobber = cfg.getboolean("output", "clobber")
-    skipcal = cfg.getboolean("output", "skipcal")
-    prical = cfg.get("observation", "primary")
+    outclobber = cfg.getboolean("output", "clobber", fallback=True)
+    skipcal = cfg.getboolean("output", "skipcal", fallback=False)
+    prical = cfg.get("observation", "primary", fallback="1934-638")
     seccal = cfg.get("observation", "secondary")
     polcal = cfg.get("observation", "polcal")
-    setup_file = cfg.get("input", "setup_file")
+    setup_file = cfg.get("input", "setup_file", fallback="setup.txt")
 
-    NFBIN = cfg.getint("output", "nfbin")
-    N_P_ROUNDS = cfg.getint("output", "nprimary")
-    N_S_ROUNDS = cfg.getint("output", "nsecondary")
-    gpaver_interval = cfg.getfloat("output", "gpaver_interval")
-    convert_ms = cfg.getboolean("output", "convert_to_ms")
+    NFBIN = cfg.getint("output", "nfbin", fallback=2)
+    N_P_ROUNDS = cfg.getint("output", "nprimary", fallback=2)
+    N_S_ROUNDS = cfg.getint("output", "nsecondary", fallback=3)
+    gpaver_interval = cfg.getfloat("output", "gpaver_interval", fallback=0)
+    convert_ms = cfg.getboolean("output", "convert_to_ms", fallback=False)
 
     return QuockaConfig(
         atfiles=atfiles,
@@ -938,7 +946,7 @@ def main(
                     targetname_cal,
                     outdir=config.outdir,
                 )
-                target_list.append(targetname_ms)
+                target_list.extend(targetname_ms)
             else:
                 target_list.append(targetname_cal)
 
