@@ -41,11 +41,14 @@ def get_noise(img_name):
 
 @delayed
 def selfcal(vis):
-    sourcename = os.path.basename(vis).replace(".2100.pscal", "")
+    for band in (2100, 5500, 7500):
+        if f".{band}" in vis:
+            break
+    sourcename = os.path.basename(vis).replace(f".{band}.pscal", "")
     logger.info(
         "***** Processing %s *****" % sourcename,
     )
-    t = f"{sourcename}.2100"
+    t = f"{sourcename}.{band}"
     try:
         t_pscal = t + ".pscal"
         t_map = t + ".map"
