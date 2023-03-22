@@ -92,7 +92,7 @@ def convert_to_ms(
             vis=ms_1,
         )
     except:
-        logger.info("Failed to convert to uvfits")
+        logger.error("Failed to convert to ms (uvfits -> ms)")
 
     logger.info("Trying miriad -> ms")
     # OPTION 2: Convert vis to ms directly
@@ -106,7 +106,7 @@ def convert_to_ms(
             vis=ms_2,
         )
     except:
-        logger.info("Failed to convert to ms")
+        logger.error("Failed to convert to ms (miriad -> ms)")
 
     return [ms_1, ms_2]
 
