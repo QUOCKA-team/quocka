@@ -8,7 +8,8 @@ import logging
 import os
 import shutil
 import subprocess as sp
-from typing import List, NamedTuple, Tuple
+from typing import List, NamedTuple, Tuple, Union
+from IPython import embed
 
 import numpy as np
 from astropy.io import fits
@@ -17,7 +18,6 @@ from braceexpand import braceexpand
 from casatasks import importmiriad, importuvfits
 from dask import compute, delayed
 from dask.distributed import Client
-from IPython import embed
 
 LOG_FORMAT = (
     "%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s"
@@ -30,7 +30,7 @@ logger.setLevel(logging.INFO)
 
 class QuockaConfig(NamedTuple):
     atfiles: list
-    if_use: int
+    if_use: Union[int, None]
     outdir: str
     rawclobber: bool
     outclobber: bool
@@ -129,6 +129,7 @@ def get_band_from_vis(vis: str) -> Tuple[List[int], int]:
     band_lut = {
         3.124: 2100,
         4.476: 5500,
+        6.476: 7500,
     }
     nband_max = 5  # There are 5 bands at ATCA
 
@@ -142,25 +143,30 @@ def get_band_from_vis(vis: str) -> Tuple[List[int], int]:
 
     # Loop over the frequency configurations
     band_list = []
-    nbands = 0
     for i in range(nband_max):
         # Find line with 'Frequency Configuration'
         try:
             idx = lines.index(f"Frequency Configuration {i+1}")
         except ValueError:
             continue
-        data = "\n".join(lines[idx + 1 : idx + 3])
+        data = "\n".join(lines[idx + 1 : idx + 4])
         df = Table.read(data.replace("GHz", ""), format="ascii").to_pandas()
 
-        # Get the band
-        band = band_lut.get(df["Freq(chan=1)"][0], None)
-        if band is None:
-            raise ValueError(
-                f"Could not find band for {vis} (Freq(chan=1)={df['Freq(chan=1)'][0]})"
-            )
-        band_list.append(band)
-        nbands += 1
-    return band_list, nbands
+        # Get the band(s)
+        for i, d in df.iterrows():
+            band = band_lut.get(d["Freq(chan=1)"], None)
+            if band is None:
+                raise ValueError(
+                    f"Could not find band for {vis} (Freq(chan=1)={d['Freq(chan=1)']})"
+                )
+            band_list.append(band)
+
+    # Check that there are no duplicate bands
+    band_list = sorted(list(set(band_list)))
+    logger.info(
+        f"Found {len(band_list)} frequency bands: {band_list}",
+    )
+    return band_list
 
 
 def call(*args, **kwargs):
@@ -273,6 +279,8 @@ def parse_config(
     Returns:
         QuockaConfig: NamedTuple with the config options
     """
+    if not os.path.exists(config_file):
+        raise FileNotFoundError(f"Config file {config_file} not found")
     cfg = configparser.RawConfigParser()
     cfg.read(config_file)
     # Initiate log file with options used
@@ -297,9 +305,9 @@ def parse_config(
     for g in braceexpand(gwcp):
         atfiles.extend(glob.glob(g))
     atfiles = sorted(atfiles)
-    if_use = cfg.getint("input", "if_use")
+    if_use = cfg.getint("input", "if_use", fallback=None)
     outdir = os.path.abspath(cfg.get("output", "dir"))
-    rawclobber = cfg.getboolean("output", "rawclobber")
+    rawclobber = cfg.getboolean("output", "rawclobber", fallback=True )
     outclobber = cfg.getboolean("output", "clobber")
     skipcal = cfg.getboolean("output", "skipcal")
     prical = cfg.get("observation", "primary")
@@ -389,7 +397,7 @@ def load_visibilities(
             "atlod",
             "in=%s" % uvlist,
             "out=%s/dat.uv" % outdir,
-            f"ifsel={if_use}",
+            f"ifsel={if_use}" if if_use else "",
             "options=birdie,noauto,xycorr,rfiflag,notsys",
         ],
     )
@@ -431,13 +439,11 @@ def frequency_split(
     if os.path.exists("uvsplit.2100.2"):
         shutil.rmtree("uvsplit.2100.2")
 
-    # Run uvflagging
     # Check frequency range
-    band_list, nbands = get_band_from_vis(vis_file)
-    logger.info(
-        f"Found {nbands} frequency bands: {band_list}",
-    )
+    band_list = get_band_from_vis(vis_file)
 
+
+    # Run uvflagging
     for band in band_list:
         for line in open(f"../badchans_{band}.txt"):
             sline = line.split()
@@ -992,7 +998,7 @@ def cli():
         args,
     )
     with Client(
-        threads_per_worker=args.threds_per_worker,
+        threads_per_worker=args.threads_per_worker,
         n_workers=args.nworkers,
         memory_limit=args.memory_limit,
     ) as client:
