@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(format=LOG_FORMAT, datefmt=DATE_FORMAT)
 logger.setLevel(logging.INFO)
 
-
 class QuockaConfig(NamedTuple):
     atfiles: list
     if_use: Union[int, None]
@@ -63,9 +62,10 @@ def convert_to_ms(
     Args:
         vis (str): Visibility file to convert
     """
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
     # Now in outdir
     os.chdir(outdir)
-
     logger.critical(f"Converting {vis} to ms")
     logger.critical("This is experimental and may not work as expected!")
 
@@ -368,6 +368,8 @@ def load_visibilities(
     Returns:
         str: Visibility file
     """
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
     if not os.path.exists(outdir):
         logger.info(
             "Creating directory %s" % outdir,
@@ -429,6 +431,8 @@ def frequency_split(
     Returns:
         list: List of frequency bands
     """
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
     # Now in outdir...
     os.chdir(outdir)
     # Now we need a uvsplit into frequency bands
@@ -488,6 +492,8 @@ def frequency_split(
 
 @delayed()
 def find_sources(outdir: str) -> List[str]:
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
     # Now in outdir...
     os.chdir(outdir)
     slist = sorted(glob.glob("[j012]*.[257]???"))
@@ -522,6 +528,8 @@ def split_sources(
     Returns:
         QuockaSources: Named tuple with the names of the calibrators and targets
     """
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
     # Now in outdir...
     os.chdir(outdir)
     logger.info(
@@ -599,6 +607,8 @@ def primary_cal(
     Returns:
         str: Calibrated primary calibrator name
     """
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
     # Now in outdir...
     os.chdir(outdir)
     logger.info(
@@ -702,6 +712,8 @@ def secondary_cal(
     Returns:
         str: Calibrated secondary calibrator name
     """
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
     # Now in outdir...
     os.chdir(outdir)
     logger.info(
@@ -796,6 +808,8 @@ def merge_secondary_cals(
     Returns:
         str: Merged secondary calibrator name
     """
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
     # Now in outdir...
     os.chdir(outdir)
     while len(seccalnames) > 1:
@@ -834,6 +848,8 @@ def target_cal(
     Returns:
         str: Calibrated target name
     """
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
     # Now in outdir...
     os.chdir(outdir)
     logger.info(
