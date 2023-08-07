@@ -8,7 +8,7 @@ This is a Python 3 package.
 
 Clone this repository and install using `pip`:
 ```bash
-git clone https://github.com/gheald/quocka
+git clone https://github.com/AlecThomson/quocka
 cd quocka
 pip install .
 ```
